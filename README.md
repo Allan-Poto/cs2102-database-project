@@ -3,10 +3,10 @@
 # Authors
 Group 88:
 
-Keith Tay Xiang Rui
-
 Gordon Tham Qi Hao
 
 Jasin Chow Si Yuan
+
+Keith Tay Xiang Rui
 
 Tay Wei Hong, Allan
