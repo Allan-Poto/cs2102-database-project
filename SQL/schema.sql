@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS cs2102-project;
+CREATE DATABASE cs2102-project;
+
 DROP TABLE IF EXISTS	
 Employees, Departments, Junior, Booker, Senior, Manager, MeetingRooms, Updates, Sessions, Participants, HealthDeclaration CASCADE;
 
