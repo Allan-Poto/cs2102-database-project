@@ -8,6 +8,8 @@ $$ BEGIN
 
 END; $$ LANGUAGE plpgsql;
 
+/* shutup*/
+
 CREATE OR REPLACE FUNCTION remove_department(id INTEGER)
 RETURN VOID AS 
 
