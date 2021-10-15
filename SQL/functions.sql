@@ -1,3 +1,4 @@
+/* TODO Create Trigger Functions */
 -- BASIC
 
 CREATE OR REPLACE FUNCTION add_department(id INTEGER, dpt_name TEXT)
