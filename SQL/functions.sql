@@ -1,6 +1,7 @@
 /* TODO Create Trigger Functions */
 -- BASIC
 
+/* test */
 CREATE OR REPLACE FUNCTION add_department(id INTEGER, dpt_name TEXT)
 RETURN VOID AS 
 	INSERT INTO Departments VALUES (id, dpt_name);
