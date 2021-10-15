@@ -3,10 +3,13 @@
 ## Setting up Database Locally (PSQL)
 
 1. Open your Command Line Interface (CLI) in the SQL folder directory
-2. Load the SQL dump into your psql using the following commands:
+2. Load the SQL dump into your psql using the following commands:  
 
-> `psql -U postgres -f schema.sql (Create a database cs2102_project in your postgres and the relevant tables)`  
-> `psql -U postgres -f populateTable.sql (Add the relevant data to the tables)`  
+Create a database cs2102_project in your postgres and the relevant tables)  
+> `psql -U postgres -f schema.sql`  
+
+Add the relevant data to the tables  
+> `psql -U postgres -f populateTable.sql`  
 
 3. Connect to database `psql -U postgres -d cs2102_project` and execute queries directly there.
 4. Once connected, you can do `\d` to check if the tables are created correctly.
@@ -36,20 +39,21 @@ Overlapping keywords (Use quotations for reference)
 
 ### Employees
 
-Total number of Employees: 43
+Total number of Employees: 43  
 Each Department:
 
 - 5 Juniors
 - 2 Seniors
 - 1 Manager  
-**Note that Employees 41, 42, 43 are resigned junior, senior and manager respectively, all from department 1**
+**Note that Employees 41, 42, 43 are resigned junior, senior and manager respectively, all from Engineering department**
 
 ### Meeting Rooms
 
 - Floors: 5
 - Rooms per Floor: 5
 - Rooms per Dpt: 5  
-**Repeated room name (owl, eagle) on differnt floor**
+
+**Repeated room name (owl, eagle) on differnt floor**  
 **Dpt ID -> Floor belonging to that Dpt**
 
 ### Updates
