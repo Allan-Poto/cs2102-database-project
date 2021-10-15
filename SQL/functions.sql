@@ -6,6 +6,8 @@ RETURN VOID AS
 	INSERT INTO Departments VALUES (id, dpt_name);
 $$ BEGIN
 
+/*this is gordon*/
+
 END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION remove_department(id INTEGER)
