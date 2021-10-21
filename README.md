@@ -49,9 +49,6 @@ Each Department:
 
 ### Meeting Rooms
 
-<<<<<<< HEAD
-Gordon Tham Qi Hao
-=======
 - Floors: 5
 - Rooms per Floor: 5
 - Rooms per Dpt: 5  
@@ -121,14 +118,7 @@ Group 88:
 - Jasin Chow Si Yuan
 - Keith Tay Xiang Rui
 - Tay Wei Hong, Allan
->>>>>>> 7e5d140c7ef300c1a1c734a331a23e420a9faf96
 
 Tech Stack:
 
-<<<<<<< HEAD
-Keith Tay Xiang Rui
-
-Tay Wei Hong, Allan
-=======
 - Database: PostgresSQL
->>>>>>> 7e5d140c7ef300c1a1c734a331a23e420a9faf96

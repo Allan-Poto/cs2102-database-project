@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-/* TODO Populate the Tables */
-=======
 /* Completed Data For Queries Function Testing Only 
 1. Refer to schema.sql for schema
 2. Refer to ER.pdf for ER-diagram
@@ -377,4 +374,3 @@ insert into Updates ("date", room, "floor", capacity, eid) values ('2021-06-30',
 insert into Updates ("date", room, "floor", capacity, eid) values ('2021-06-30', 4, 5, 8, 40);
 insert into Updates ("date", room, "floor", capacity, eid) values ('2021-06-30', 5, 5, 8, 40);
 
->>>>>>> 7e5d140c7ef300c1a1c734a331a23e420a9faf96
