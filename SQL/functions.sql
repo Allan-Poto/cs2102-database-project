@@ -1,49 +1,54 @@
 /* TODO Create Trigger Functions */
 -- BASIC
 
-CREATE OR REPLACE FUNCTION add_department(id INTEGER, dpt_name TEXT)
+CREATE OR REPLACE FUNCTION add_department(IN id INT, IN dpt_name TEXT)
 RETURN VOID AS 
+
+$$ BEGIN
 	INSERT INTO Departments VALUES (id, dpt_name);
-$$ BEGIN
 
 END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION remove_department(id INTEGER)
+CREATE OR REPLACE FUNCTION remove_department(IN id INT)
 RETURN VOID AS 
 
 $$ BEGIN
+	DELETE FROM Departments WHERE did = id;
 
 END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION add_room(floor_num INTEGER, room_num INTEGER, room_name TEXT, room_cap INTEGER)
+CREATE OR REPLACE FUNCTION add_room(IN floor_num INT, IN room_num INT, IN room_name TEXT, IN capacity INT, IN dept_id INT, IN manager_id INT)
 RETURN VOID AS 
 
 $$ BEGIN
-
-END; $$ LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE FUNCTION change_capacity()
-RETURN VOID AS 
-
-$$ BEGIN
+	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id),
+	INSERT INTO Updates VALUES (GETDATE(), room_num, floor_num, capacity, manager_id);
 
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION add_employee()
+CREATE OR REPLACE FUNCTION change_capacity(IN room_num INT, IN room_name TEXT, IN manager_id INT, IN new_capacity INT)
 RETURN VOID AS 
 
 $$ BEGIN
+	INSERT INTO Updates VALUES (GETDATE(), room_num, floor_num, new_capacity, manager_id);
 
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION remove_employee()
+CREATE OR REPLACE FUNCTION add_employee(IN eid INT, IN ename TEXT, IN email TEXT, IN home INT, IN phone INT, IN office INT, IN did INT)
 RETURN VOID AS 
 
 $$ BEGIN
+	INSERT INTO Employees VALUES (eid, ename, email, home, phone, office, NULL, did);
+END; $$ LANGUAGE plpgsql;
 
+
+CREATE OR REPLACE FUNCTION remove_employee(INT del_eid)
+RETURN VOID AS 
+
+$$ BEGIN
+	DELETE FROM Employees WHERE eid = del_eid;
 END; $$ LANGUAGE plpgsql;
 
 
