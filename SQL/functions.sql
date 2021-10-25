@@ -27,11 +27,11 @@ $$ BEGIN
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION change_capacity(IN room_num INT, IN room_name TEXT, IN manager_id INT, IN new_capacity INT)
+CREATE OR REPLACE FUNCTION change_capacity(IN room_num INT, IN room_name TEXT, IN manager_id INT, IN new_capacity INT, IN curr_date DATE)
 RETURN VOID AS 
 
 $$ BEGIN
-	INSERT INTO Updates VALUES (GETDATE(), room_num, floor_num, new_capacity, manager_id);
+	INSERT INTO Updates VALUES (curr_date, room_num, floor_num, new_capacity, manager_id);
 
 END; $$ LANGUAGE plpgsql;
 
