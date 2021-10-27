@@ -54,51 +54,62 @@ END; $$ LANGUAGE plpgsql;
 
 -- CORE
 
-CREATE OR REPLACE FUNCTION search_room()
-RETURN VOID AS 
-
+CREATE OR REPLACE FUNCTION search_room(IN cap INT, IN "date" DATE, IN start_hour INT, IN end_hour INT)
+RETURNS TABLE("floor" INT, room INT, dept INT, cap INT) AS 
+DECLARE
+	hour = start_hour;
 $$ BEGIN
-
+	while hour <= end_hour LOOP
+		/* TODO */
+	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION book_room()
+CREATE OR REPLACE FUNCTION book_room(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
 RETURN VOID AS 
-
+/* TODO TRIGGER TO CHECK AVAILABILITY */
+/* TODO CHECK EMPLOYEE IS MANAGER/SENIOR */
+/* TODO EMPLOYEE CANNOT BOOK IF FEVER */
 $$ BEGIN
-
+	INSERT INTO "Sessions" VALUES (start_hour, "date", room, "floor", eid, NULL);
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION unbook_room()
+CREATE OR REPLACE FUNCTION unbook_room(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
 RETURN VOID AS 
 
 $$ BEGIN
-
+	DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND bid = eid);
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION join_meeting()
+CREATE OR REPLACE FUNCTION join_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
 RETURN VOID AS 
-
+/* TODO TRIGGER TO CHECK SESSION NOT APPROVED, NO MORE CHANGES AFTER APPROVE */
+/* TODO TRIGGER TO CHECK CAP */
+/* TODO TRIGGER TO CHECK EMPLOYEE NO FEVER */
 $$ BEGIN
-
+	INSERT INTO Participants VALUES (eid, start_hour, "date", room, "floor");
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION leave_meeting()
+CREATE OR REPLACE FUNCTION leave_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
 RETURN VOID AS 
-
+/* TODO TRIGGER TO CHECK SESSION NOT APPROVED, NO MORE CHANGES AFTER APPROVE */
 $$ BEGIN
-
+	DELETE FROM Participants WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND eid = eid);
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION approve_meeting()
+CREATE OR REPLACE FUNCTION approve_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN mid INT)
 RETURN VOID AS 
-
+/* TODO TRIGGER TO CHECK MANAGER AND BOOKER SAME DEPT */
+DECLARE
+	booker INT := SELECT bid FROM "Sessions" WHERE  ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor");
 $$ BEGIN
-
+	UPDATE "Sessions"
+	SET approver = mid
+	WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND bid = booker);
 END; $$ LANGUAGE plpgsql;
 
 
