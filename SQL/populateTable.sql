@@ -85,9 +85,9 @@ insert into Employees (eid, ename, email, home, phone, office, did) values (37, 
 insert into Employees (eid, ename, email, home, phone, office, did) values (38, 'Trisha', 'tsouthward11@facebook.com', 85158764, 70592700, 64273018, 3);
 insert into Employees (eid, ename, email, home, phone, office, did) values (39, 'Jerrylee', 'jfarens12@mashable.com', null, 95476470, 62948065, 4);
 insert into Employees (eid, ename, email, home, phone, office, did) values (40, 'Peyter', 'pmadgett13@acquirethisname.com', null, 29998123, null, 5);
-insert into Employees (eid, ename, email, home, phone, office, resign, did) values (41, 'ResignJunior', 'ResignJunior@acquirethisname.com', 12347890, 12345890, null, DATE('2021-07-01'), 1);
-insert into Employees (eid, ename, email, home, phone, office, resign, did) values (42, 'ResignSenior', 'ResignSenior@acquirethisname.com', 12345890, 99999999, null, DATE('2021-07-02'), 1);
-insert into Employees (eid, ename, email, home, phone, office, resign, did) values (43, 'ResignManager', 'ResignManager@acquirethisname.com', 12567890, 11111111, null, DATE('2021-07-03'), 1);
+insert into Employees (eid, ename, email, home, phone, office, resign, did) values (41, 'ResignJunior', 'ResignJunior@acquirethisname.com', 12347890, 12345890, null, CURRENT_DATE - interval '2 day', 1);
+insert into Employees (eid, ename, email, home, phone, office, resign, did) values (42, 'ResignSenior', 'ResignSenior@acquirethisname.com', 12345890, 99999999, null, CURRENT_DATE - interval '1 day', 1);
+insert into Employees (eid, ename, email, home, phone, office, resign, did) values (43, 'ResignManager', 'ResignManager@acquirethisname.com', 12567890, 11111111, null, CURRENT_DATE, 1);
 
 -- Junior
 insert into Junior (eid) values (1), (2), (3), (4), (5)
