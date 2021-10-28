@@ -115,40 +115,70 @@ END; $$ LANGUAGE plpgsql;
 
 -- HEALTH
 DROP TRIGGER IF EXISTS 
+	fever_update ON HealthDeclaration CASCADE;
+DROP TRIGGER IF EXISTS	
 	fever_check ON HealthDeclaration CASCADE;
 
 DROP FUNCTION IF EXISTS 
-	update_fever_status, declare_health, contact_tracing;
-
+	update_fever_status, declare_health, update_contact_tracing, contact_tracing CASCADE;
 
 CREATE OR REPLACE FUNCTION update_fever_status()
 RETURNS TRIGGER AS $$
 BEGIN
-	IF (temp > 37.5) THEN SET NEW.fever = TRUE;
+	IF (NEW.temp > 37.5) THEN NEW.fever := true;
+	ELSE NEW.fever := false;
 	END IF;
-END;
-$$ LANGUAGE plpgsql;
+	RETURN NEW;
+END; $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER fever_check
-AFTER INSERT ON HealthDeclaration
-FOR EACH STATEMENT EXECUTE FUNCTION update_fever_status();
+CREATE TRIGGER fever_update
+BEFORE INSERT ON HealthDeclaration
+FOR EACH ROW EXECUTE FUNCTION update_fever_status();
 
 CREATE OR REPLACE FUNCTION declare_health
 	(IN employee_id INT, IN declaration_date DATE, IN temperature FLOAT)
 RETURNS VOID AS $$ 
 BEGIN
 	INSERT INTO HealthDeclaration(eid, "date", temp) VALUES(employee_id, declaration_date, temperature);
-END; 
-$$ LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE FUNCTION contact_tracing()
-RETURNS VOID AS 
-
-$$ BEGIN
-
 END; $$ LANGUAGE plpgsql;
 
+/*TODO Update status of those with close contact in the event of fever, including canceling meeting etc*/ 
+/*CREATE OR REPLACE FUNCTION update_contact_tracing()
+RETURNS TRIGGER AS $$
+BEGIN
+END; $$ LANGUAGE plpgsql; 
+*/
+/*
+CREATE TRIGGER fever_check
+AFTER INSERT ON HealthDeclaration
+EXECUTE FUNCTION update_contact_tracing();
+*/
+
+CREATE OR REPLACE FUNCTION contact_tracing
+	(IN employee_id INT, IN trace_from DATE)
+RETURNS TABLE(contacted INT) AS 
+$$ BEGIN
+	/*Check if health declaration was done by the employee*/
+	IF (SELECT EXISTS(SELECT 1 FROM HealthDeclaration WHERE eid = employee_id AND "date" = trace_from)) THEN 
+		IF(SELECT EXISTS(SELECT 1 FROM HealthDeclaration WHERE eid = employee_id AND "date" = trace_from AND fever = true)) THEN
+			CREATE TEMP TABLE contacted AS  
+				/*FIXME Not returning the correct values for any date other than '2021-10-29'*/
+				WITH meetings_attended AS ( 
+					SELECT "time", "date", room, "floor" 
+					FROM Participants 
+					WHERE eid = employee_id AND ("date" BETWEEN trace_from - interval '3 day' AND trace_from) 
+				) 
+				SELECT DISTINCT eid 
+				FROM Participants p LEFT JOIN meetings_attended ma
+				ON p."time" = ma."time" AND p."date" = ma."date" 
+				AND p.room = ma.room AND p."floor" = ma."floor"
+			;
+			RETURN QUERY SELECT * FROM contacted;
+			DROP TABLE IF EXISTS contacted;
+		END IF;
+	END IF;
+END; 
+$$ LANGUAGE plpgsql;
 
 -- ADMIN
 
