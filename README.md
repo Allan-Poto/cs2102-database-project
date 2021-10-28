@@ -11,7 +11,11 @@ Create a database cs2102_project in your postgres and the relevant tables)
 Add the relevant data to the tables  
 > `psql -U postgres -f populateTable.sql`  
 
+Add the function to the database
+> `psql -U postgres -f functions.sql`
+
 3. Connect to database `psql -U postgres -d cs2102_project` and execute queries directly there.
+
 4. Once connected, you can do `\d` to check if the tables are created correctly.
 
 ## NOTES REGARDING SCHEMA
