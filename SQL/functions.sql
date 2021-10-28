@@ -53,6 +53,8 @@ END; $$ LANGUAGE plpgsql;
 
 
 -- CORE
+DROP FUNCTION IF EXISTS 
+	search_room, book_room, unbook_room, join_meeting, leave_meeting, approve_meeting;
 
 CREATE OR REPLACE FUNCTION search_room(IN cap INT, IN "date" DATE, IN start_hour INT, IN end_hour INT)
 RETURNS TABLE("floor" INT, room INT, dept INT, cap INT) AS 
@@ -60,7 +62,7 @@ DECLARE
 	hour = start_hour;
 $$ BEGIN
 	while hour <= end_hour LOOP
-		/* TODO */
+		/* TODO ANYONE HAS ANY IDEA???*/
 	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
@@ -69,27 +71,44 @@ CREATE OR REPLACE FUNCTION book_room(IN "floor" INT, IN room INT, IN "date" DATE
 RETURNS VOID AS 
 /* TODO TRIGGER TO CHECK AVAILABILITY */
 /* TODO CHECK EMPLOYEE IS MANAGER/SENIOR */
-/* TODO EMPLOYEE CANNOT BOOK IF FEVER */
+DECLARE
+	-- CHECK IF ADDING A FEVER PERSON, NO FEVER THEN ADD
+	fever BOOLEAN := SELECT fever FROM HealthDeclaration 
+					WHERE eid = eid AND "date" = CURRENT_DATE();
 $$ BEGIN
-	INSERT INTO "Sessions" VALUES (start_hour, "date", room, "floor", eid, NULL);
+	IF (fever = 0) THEN INSERT INTO "Sessions" VALUES (start_hour, "date", room, "floor", eid, NULL);
 END; $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION unbook_room(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
 RETURNS VOID AS 
-
+DECLARE
+	/* TODO CHECK SYNTAX (ACTUALLY NEED CHECK? IF THE BID NOT THE PERSON THEN NO ENTRY TO REMOVE?) */
+	booker INT := COALESCE(SELECT bid FROM "Sessions" WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND bid = eid),0);
 $$ BEGIN
 	DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND bid = eid);
+	IF (booker!=0) THEN DELETE FROM Participants WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor");
+	END IF;
 END; $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION join_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
 RETURNS VOID AS 
-/* TODO TRIGGER TO CHECK SESSION NOT APPROVED, NO MORE CHANGES AFTER APPROVE */
-/* TODO TRIGGER TO CHECK CAP */
-/* TODO TRIGGER TO CHECK EMPLOYEE NO FEVER */
+/* TODO TRIGGER TO CHECK CAP : CANNOT GET CAP , HOW TO GET DATE? */
+DECLARE
+	-- CHECK IF ADDING A FEVER PERSON, NO FEVER THEN ADD
+	fever BOOLEAN := SELECT fever FROM HealthDeclaration 
+					WHERE eid = eid AND "date" = CURRENT_DATE();
+	-- CHECK IF MEETING IS APPROVED, 0 MEANS NOT APPROVED YET
+	approver INT := SELECT COALESCE(approver,0) FROM "Sessions" 
+					WHERE "time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor";
+	-- FIND TOTAL NUMBER CURRENTLY IN MEETING, NEED TO CHECK AGAINST CAP LATER
+	participants INT := SELECT COUNT(*) FROM "Participants" 
+					WHERE "time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor";
 $$ BEGIN
-	INSERT INTO Participants VALUES (eid, start_hour, "date", room, "floor");
+	/* TODO CHECK IF THIS SYNTAX CORRECT */
+	IF (fever = 0) AND (approver = 0) THEN INSERT INTO Participants VALUES (eid, start_hour, "date", room, "floor");
+	END IF;
 END; $$ LANGUAGE plpgsql;
 
 
