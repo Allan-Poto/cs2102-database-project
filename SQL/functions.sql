@@ -13,6 +13,8 @@ CREATE OR REPLACE FUNCTION remove_department(IN id INT)
 RETURNS VOID AS 
 
 $$ BEGIN
+	/*TODO Changing all MeetingRooms to be under Department 0 (HR/Management - report)*/
+	/*TODO Checking no employees under department*/
 	DELETE FROM Departments WHERE did = id;
 
 END; $$ LANGUAGE plpgsql;
@@ -22,6 +24,7 @@ RETURNS VOID AS
 
 $$ BEGIN
 	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id),
+	/*TODO Check that ID belongs to a manager*/
 	INSERT INTO Updates VALUES (GETDATE(), room_num, floor_num, capacity, manager_id);
 
 END; $$ LANGUAGE plpgsql;
@@ -31,11 +34,17 @@ CREATE OR REPLACE FUNCTION change_capacity(IN room_num INT, IN room_name TEXT, I
 RETURNS VOID AS 
 
 $$ BEGIN
+	/*TODO Add in date_of_effect_of_update, check the date is not before today*/
+	/*TODO Must be a MANAGER*/
 	INSERT INTO Updates VALUES (curr_date, room_num, floor_num, new_capacity, manager_id);
 
 END; $$ LANGUAGE plpgsql;
 
 
+/*TODO Remove eid, email, home, office*/
+/*TODO Add in KIND (JUNIOR, SENIOR, MANAGER, BOOKER) -> Update their respective table*/
+/*TODO Create function to update employee info */
+/* */
 CREATE OR REPLACE FUNCTION add_employee(IN eid INT, IN ename TEXT, IN email TEXT, IN home INT, IN phone INT, IN office INT, IN did INT)
 RETURNS VOID AS 
 
@@ -43,11 +52,13 @@ $$ BEGIN
 	INSERT INTO Employees VALUES (eid, ename, email, home, phone, office, NULL, did);
 END; $$ LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE FUNCTION remove_employee(INT del_eid)
 RETURNS VOID AS 
 
 $$ BEGIN
+	/*TODO RESIGN -> 
+	they are no longer allowed to book or approve any meetings rooms. Additionally, any future records (e.g., future
+meetings) are removed.*/
 	DELETE FROM Employees WHERE eid = del_eid;
 END; $$ LANGUAGE plpgsql;
 
@@ -162,16 +173,14 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 
 /*TODO Update status of those with close contact in the event of fever, including canceling meeting etc*/ 
-/*CREATE OR REPLACE FUNCTION update_contact_tracing()
+CREATE OR REPLACE FUNCTION update_contact_tracing()
 RETURNS TRIGGER AS $$
 BEGIN
 END; $$ LANGUAGE plpgsql; 
-*/
-/*
+
 CREATE TRIGGER fever_check
 AFTER INSERT ON HealthDeclaration
 EXECUTE FUNCTION update_contact_tracing();
-*/
 
 CREATE OR REPLACE FUNCTION contact_tracing
 	(IN employee_id INT, IN trace_from DATE)
