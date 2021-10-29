@@ -151,55 +151,78 @@ END; $$ LANGUAGE plpgsql;
 
 
 -- ADMIN
-
+/* DONE */
 CREATE OR REPLACE FUNCTION non_compliance
-	(IN start_date DATE, IN end_date, OUT eid INT, OUT count INT)
-RETURNS RECORD AS $$
+	(IN start_date DATE, IN end_date DATE)
+RETURNS TABLE(eid INT, count BIGINT) AS $$
+#variable_conflict use_column
 DECLARE
-	days INT := DATEDIFF(day, start_date, end_date);
+	days INT := end_date - start_date + 1;	
 BEGIN
-	SELECT eid, days - COUNT(*) as count /* days is the 'correct' number of entries. count(*) is number of actual entries. we take the difference */
+	return query 
+	SELECT eid, days - COUNT(*) as count /* days is the 'correct' number of entries. count(*) is number of entries. we take the difference */
 	FROM HealthDeclaration
-	WHERE "date" >= start_date
-	AND "data" <= end_date
+	WHERE date >= start_date
+	AND date <= end_date
 	GROUP BY eid 
-	HAVING COUNT(*) = days /* exclude employees who have the 'correct' number of entries. */
+	HAVING COUNT(*) <> days/* exclude employees who have the 'correct' number of entries. */
+	ORDER BY count DESC ; /* order by decreasing number of days, as stipulated */
+	
 END; 
 $$ LANGUAGE plpgsql;
 
 
+/* DONE */
+/* This function doesn't change approval status to boolean. Hence approved status is determined by whether the 'approved' column is NULL (not approved) or an integer (approved) */
 CREATE OR REPLACE FUNCTION view_booking_report
-	(IN start_date DATE, eid INT, OUT "floor" INT, OUT room INT, OUT "date" DATE, hour INT, status BOOLEAN)
-$$ BEGIN
-
-	/* get temporary table first, then update values accordingly */
-	WITH SessionsRaw AS (
+	(IN start_date DATE, IN eid INT) 
+RETURNS TABLE ("floor" INT, room INT, "date" DATE, hour INT, approved INT) AS $$
+#variable_conflict use_column
+BEGIN
+RETURN QUERY WITH SessionsRaw AS (
 		SELECT "floor", room, "date", "time", approver
 		FROM "Sessions" s
-		WHERE s.eid = eid
-		AND s."date" >= "date"
+		WHERE s.bid = eid
+		AND s."date" >= start_date
 	)
-	UPDATE SessionsRaw SET approver = "Approved" WHERE approver IS NOT NULL /* for sessions approved */
-	UPDATE SessionsRaw SET approver = "Not Approved" WHERE approver IS NULL /* for sessions not approved */
-	UPDATE SessionsRaw SET "date" = DATEPART(hour, "date") /* replace full date with hour only */
-	
 	SELECT *
 	FROM SessionsRaw  
-	ORDER BY "date", "time"
-END; $$ LANGUAGE plpgsql;
+	ORDER BY "date", "time"; /* order by date and times in ascending order, as stipulated */
+END; 
+$$ LANGUAGE plpgsql;
 
+/* DONE */
+/* participants table contains all approved meetings already, hence no need to check if approved anot */
+/* note input eid is defined as eid1. This is to avoid p.eid = eid in the query, which will reference p.eid itself i.e simply returns meetings from start_date on and ignoring input eid */
+CREATE OR REPLACE FUNCTION view_future_meeting
+	(IN start_date DATE, IN eid1 INT)
+RETURNS TABLE ("floor" INT, room INT, "date" DATE, start_hour INT) AS $$
+#variable_conflict use_column
+BEGIN
+RETURN QUERY
+SELECT floor,room, date, time
+FROM participants p
+WHERE p.eid = eid1
+AND p.date >= start_date
+ORDER BY date, time;
+END; 
+$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION view_future_meeting()
-RETURNS VOID AS 
-
-$$ BEGIN
-
-END; $$ LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE FUNCTION view_manager_report()
-RETURNS VOID AS 
-
-$$ BEGIN
-
-END; $$ LANGUAGE plpgsql;
+/* DONE */
+CREATE OR REPLACE FUNCTION view_manager_report
+	(IN start_date DATE, eid1 INT)
+RETURNS TABLE(floor INT, room INT, date DATE, start_hour INT, eid INT) AS $$ 
+#variable_conflict use_column
+/* no need for trigger : query will naturally return empty table if ied is not that of a manager's */
+DECLARE
+	m_did INT := (SELECT did FROM employees NATURAL JOIN manager WHERE eid = eid1); /* get manager's dept id */
+BEGIN
+RETURN QUERY /*WITH ManagerInfo AS (select * from employees natural join manager where eid = eid1)*/
+SELECT floor, room, date, time, bid
+FROM "Sessions" natural join meetingrooms
+WHERE did = m_did
+AND date >= start_date
+AND approver ISNULL ;
+	
+END; 
+$$ LANGUAGE plpgsql;
