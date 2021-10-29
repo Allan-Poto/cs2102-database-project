@@ -25,12 +25,7 @@ RETURNS VOID AS
 
 $$ BEGIN
 	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id),
-<<<<<<< HEAD
 	INSERT INTO Updates VALUES ((SELECT CURRENT_DATE), room_num, floor_num, capacity, manager_id);
-=======
-	/*TODO Check that ID belongs to a manager*/
-	INSERT INTO Updates VALUES (GETDATE(), room_num, floor_num, capacity, manager_id);
->>>>>>> 362996055b1e0dc160b94d7bebe7963b75938cba
 
 END; $$ LANGUAGE plpgsql;
 
@@ -61,15 +56,13 @@ CREATE OR REPLACE FUNCTION remove_employee(INT del_eid)
 RETURNS VOID AS 
 
 $$ BEGIN
-<<<<<<< HEAD
-	
-
-=======
-	/*TODO RESIGN -> 
+	UPDATE Employees 
+	SET resign = (SELECT(CURRENT_DATE))
+	WHERE eid = del_eid;	
+/*TODO RESIGN -> 
 	they are no longer allowed to book or approve any meetings rooms. Additionally, any future records (e.g., future
 meetings) are removed.*/
-	DELETE FROM Employees WHERE eid = del_eid;
->>>>>>> 362996055b1e0dc160b94d7bebe7963b75938cba
+
 END; $$ LANGUAGE plpgsql;
 
 
