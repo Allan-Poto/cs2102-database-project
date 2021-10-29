@@ -36,6 +36,7 @@ RETURNS VOID AS
 $$ BEGIN
 	/*TODO Add in date_of_effect_of_update, check the date is not before today*/
 	/*TODO Must be a MANAGER*/
+	/*TODO trigger for meeting room dynamics, remove all meeting rooms that that participants higher than new change*/
 	INSERT INTO Updates VALUES (curr_date, room_num, floor_num, new_capacity, manager_id);
 
 END; $$ LANGUAGE plpgsql;
@@ -61,7 +62,8 @@ $$ BEGIN
 	WHERE eid = del_eid;	
 /*TODO RESIGN -> 
 	they are no longer allowed to book or approve any meetings rooms. Additionally, any future records (e.g., future
-meetings) are removed.*/
+meetings) are removed. create tigger to auto do this after employee remove*/
+
 
 END; $$ LANGUAGE plpgsql;
 
