@@ -2,6 +2,7 @@
 
 /* TODO Create Trigger Functions */
 -- BASIC
+DROP FUNCTION IF EXISTS add_department, remove_department, add_room, change_capacity, add_employee, remove_employee; 
 CREATE OR REPLACE FUNCTION add_department(IN id INT, IN dpt_name TEXT)
 RETURNS VOID AS 
 $$ BEGIN
@@ -22,7 +23,7 @@ RETURNS VOID AS
 
 $$ BEGIN
 	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id),
-	INSERT INTO Updates VALUES (GETDATE(), room_num, floor_num, capacity, manager_id);
+	INSERT INTO Updates VALUES ((SELECT CURRENT_DATE), room_num, floor_num, capacity, manager_id);
 
 END; $$ LANGUAGE plpgsql;
 
@@ -48,7 +49,8 @@ CREATE OR REPLACE FUNCTION remove_employee(INT del_eid)
 RETURNS VOID AS 
 
 $$ BEGIN
-	DELETE FROM Employees WHERE eid = del_eid;
+	
+
 END; $$ LANGUAGE plpgsql;
 
 
