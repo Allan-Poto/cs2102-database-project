@@ -90,7 +90,7 @@ CREATE TABLE Participants ( /* Each entry is a participant for a certain session
 	room INT,
 	"floor" INT,
 	PRIMARY KEY(eid, "time", "date", room, "floor"),
-	FOREIGN KEY ("time", "date", room, "floor") REFERENCES "Sessions" ("time", "date", room, "floor")
+	FOREIGN KEY ("time", "date", room, "floor") REFERENCES "Sessions" ("time", "date", room, "floor") ON DELETE CASCADE
 );
 
 CREATE TABLE HealthDeclaration (
