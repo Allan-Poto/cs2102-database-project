@@ -30,8 +30,8 @@ Overlapping keywords (Use quotations for reference)
 
 ### Settings
 
-- Company 1st Day: '2021-06-30'
-- Current Date: '2021-07-03'
+- Company 1st Day: D-3 (3 Days before your CURRENT_DATE)
+- Current Date: D-DAY (THE DATE ON YOUR COMPUTER)
 
 ### Departments
 
@@ -64,25 +64,25 @@ Each Department:
 
 Initial Capacity: 8  
 Update ID: Manager of their respective Dpts  
-Update Date: '2021-06-30' (Company Start Date)
+Update Date: D-3 (Company Start Date)
 
 ### Sessions
 
 Meeting List:  
 ("time", "date", room, "floor", bid, approver)  
-(21, '2021-07-01', 2, 2, 29, 37); -- Consec timeslot  
-(22, '2021-07-01', 2, 2, 29, 37);  
-(23, '2021-07-01', 2, 2, 29, 37);  
-(18, '2021-07-02', 1, 4, 26, 36);  
-(18, '2021-07-03', 1, 4, 26, 36);  
-(18, '2021-07-10', 1, 4, 26, 36);  
-(23, '2021-07-11', 3, 3, 37, 37); -- Booked and approved by same Manager  
-(13, '2021-08-29', 3, 4, 32, null); -- Pending booking  
-(18, '2021-08-30', 2, 3, 27, 36); -- Different floor room  
-(15, '2021-08-30', 1, 4, 28, 37); -- Differnt timeslot  
-(18, '2021-09-01', 1, 4, 26, 36); -- Different date  
-(18, '2021-09-03', 1, 4, 26, 36); -- Different Capacity  
-(16, '2021-11-11', 2, 4, 26, 36); -- Future Session
+(21, D-2, 2, 2, 29, 37); -- Consec timeslot  
+(22, D-2, 2, 2, 29, 37);  
+(23, D-2, 2, 2, 29, 37);  
+(18, D-1, 1, 4, 26, 36);  
+(18, D-DAY, 1, 4, 26, 36);  
+(18, D+1, 1, 4, 26, 36);  
+(23, D+2, 3, 3, 37, 37); -- Booked and approved by same Manager  
+(13, D+3, 3, 4, 32, null); -- Pending booking  
+(18, D+4, 2, 3, 27, 36); -- Different floor room  
+(15, D+4, 1, 4, 28, 37); -- Differnt timeslot  
+(18, D+5, 1, 4, 26, 36); -- Different date  
+(18, D+6, 1, 4, 26, 36); -- Different Capacity  
+(16, D+7, 2, 4, 26, 36); -- Future Session
 
 Covered Testcases:
 
@@ -102,8 +102,8 @@ Not covered:
 ### Health Declaration
 
 Non-Compliance:  
-2021-07-02: 5, 10, 12, 15, 18, 19, 22, 24, 26, 38  
-2021-07-03: 5, 9, 12, 15, 18, 19
+D-2: 5, 10, 12, 15, 18, 19, 22, 24, 26, 38  
+D-DAY: 5, 9, 12, 15, 18, 19
 
 ### Participation List
 
