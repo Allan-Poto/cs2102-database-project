@@ -21,6 +21,7 @@ CREATE TABLE Employees (
 	office INT,
 	resign DATE DEFAULT NULL,
 	did INT NOT NULL,
+	exposure_end_date DATE DEFAULT NULL,
 	PRIMARY KEY(eid),
 	FOREIGN KEY (did) REFERENCES Departments (did)
 );

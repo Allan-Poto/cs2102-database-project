@@ -122,7 +122,6 @@ $$ BEGIN
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE FUNCTION leave_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
 RETURNS VOID AS 
 /* TODO TRIGGER TO CHECK SESSION NOT APPROVED, NO MORE CHANGES AFTER APPROVE */
@@ -176,6 +175,10 @@ END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION update_contact_tracing()
 RETURNS TRIGGER AS $$
 BEGIN
+	/*TODO Remove employee from all future meetings -> Participants List*/
+	/*TODO Cancel room booked by this employee -> remove Session*/
+	/*TODO Edit exposure end_date for close contacts*/
+	/*TODO Remove employees contacted from meeting for next 7 days*/
 END; $$ LANGUAGE plpgsql; 
 
 CREATE TRIGGER fever_check
@@ -280,7 +283,7 @@ SELECT floor, room, date, time, bid
 FROM "Sessions" natural join meetingrooms
 WHERE did = m_did
 AND date >= start_date
-AND approver ISNULL ;
+AND approver IS NULL ;
 	
 END; 
 $$ LANGUAGE plpgsql;
