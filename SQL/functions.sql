@@ -3,6 +3,7 @@
 /* TODO Create Trigger Functions */
 -- BASIC
 DROP FUNCTION IF EXISTS add_department, remove_department, add_room, change_capacity, add_employee, remove_employee; 
+
 CREATE OR REPLACE FUNCTION add_department(IN id INT, IN dpt_name TEXT)
 RETURNS VOID AS 
 $$ BEGIN
@@ -12,61 +13,123 @@ END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION remove_department(IN id INT)
 RETURNS VOID AS 
-
 $$ BEGIN
-	/*TODO Changing all MeetingRooms to be under Department 0 (HR/Management - report)*/
 	/*TODO Checking no employees under department*/
-	DELETE FROM Departments WHERE did = id;
+	IF id IN (SELECT UNIQUE did FROM Employees) THEN raise_application_error(-20001,'Employees with current department id still exist');
 
+	/*TODO Changing all MeetingRooms to be under Department 0 (HR/Management - report)*/
+	ELSE UPDATE MeetingRooms SET did = 0 WHERE did = id;	
+
+	DELETE FROM Departments WHERE did = id;
+	END IF;
 END; $$ LANGUAGE plpgsql;
+
+
 
 CREATE OR REPLACE FUNCTION add_room(IN floor_num INT, IN room_num INT, IN room_name TEXT, IN capacity INT, IN dept_id INT, IN manager_id INT)
 RETURNS VOID AS 
-
 $$ BEGIN
+	
 	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id),
 	INSERT INTO Updates VALUES ((SELECT CURRENT_DATE), room_num, floor_num, capacity, manager_id);
-
+	END IF;
 END; $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION check_room_existance() RETURNS TRIGGER AS $$
+BEGIN
+	/*TODO check if current floor and room is alr occupied. if not, then insert*/
+	IF (SELECT COUNT(*) FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num) != 0 
+	THEN RAISE EXCEPTION 'Specified Room already exists';
+	END IF;
+END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION change_capacity(IN room_num INT, IN room_name TEXT, IN manager_id INT, IN new_capacity INT, IN curr_date DATE)
+CREATE TRIGGER room_existance
+BEFORE INSERT ON MeetingRooms
+FOR EACH STATEMENT EXECUTE FUNCTION check_room_existance();
+
+/*TODO update_room*/
+CREATE OR REPLACE FUNCTION update_room_did(IN room_num INT, IN floor_num INT, IN new_did INT) 
+RETURN VOID AS $$
+BEGIN
+	UPDATE MeetingRooms set did = new_did WHERE room = room_num AND "floor" = floor_num;
+END; $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION change_capacity(IN room_num INT, IN room_num TEXT, IN manager_id INT, IN new_capacity INT, IN curr_date DATE, 
+IN change_date DATE)
 RETURNS VOID AS 
-
 $$ BEGIN
 	/*TODO Add in date_of_effect_of_update, check the date is not before today*/
+	IF change_date <= curr_date THEN raise_application_error(-20001,'Date is in the past');
 	/*TODO Must be a MANAGER*/
-	/*TODO trigger for meeting room dynamics, remove all meeting rooms that that participants higher than new change*/
-	INSERT INTO Updates VALUES (curr_date, room_num, floor_num, new_capacity, manager_id);
-
+	ELSEIF manager_id NOT IN (SELECT eid FROM Manager) THEN raise_application_error(-20001,'Employee is not a Manager');
+	
+	ELSE 
+	INSERT INTO Updates VALUES (change_date, room_num, floor_num, new_capacity, manager_id),
+	/*TODO remove all sessions that have more participants higher than new capacity*/
+	DELETE FROM "Sessions"
+	WHERE room = room_num 
+	AND "floor" = floor_num 
+	AND "date" >= change_date 
+	AND "time" IN(  SELECT ref."time"
+				    FROM (SELECT COUNT(eid) AS total_participants, "time", "date", room, "floor"
+		                 FROM Participants
+						 GROUP BY "time", "date", room, "floor") AS ref 
+					WHERE "date" >= change_date
+					AND room = room_num
+					"floor" = floor_num
+					AND total_participants > new_capacity); /*TODO on delete cascade to change participants table?*/
+	END IF;
 END; $$ LANGUAGE plpgsql;
 
-
-/*TODO Remove eid, email, home, office*/
+/*TODO Remove eid, email*/
 /*TODO Add in KIND (JUNIOR, SENIOR, MANAGER, BOOKER) -> Update their respective table*/
-/*TODO Create function to update employee info */
-/* */
-CREATE OR REPLACE FUNCTION add_employee(IN eid INT, IN ename TEXT, IN email TEXT, IN home INT, IN phone INT, IN office INT, IN did INT)
-RETURNS VOID AS 
+CREATE OR REPLACE FUNCTION add_employee(IN ename TEXT, IN home INT, IN phone INT, IN office INT, IN did INT, IN e_kind TEXT /*J or S or M*/)
+RETURNS VOID AS $$
+DECLARE
+	email := '';
+	eid := 0;
+BEGIN
+	eid := (SELECT MAX(eid) FROM Employees) + 1;
+	email := (SELECT CONCAT(ename, eid, '@ilovenus.com'));
+	INSERT INTO Employees VALUES (eid, ename, email, home, phone, office, NULL, did, NULL);
+	IF (e_kind = 'J') THEN INSERT INTO Junior VALUES(eid);
+	ELSEIF (e_kind = 'S') THEN INSERT INTO Senior VALUES(eid);
+	ELSEIF (e_kind = 'M') THEN INSERT INTO Manager VALUES(eid);	
+	ELSE raise_application_error(-20001,'Invalid Employee Type');
+	END IF;
+END; $$ LANGUAGE plpgsql;
 
-$$ BEGIN
-	INSERT INTO Employees VALUES (eid, ename, email, home, phone, office, NULL, did);
+/*TODO Create function to update employee info */
+CREATE OR REPLACE FUNCTION update_enfo(IN change_type TEXT, IN new_value INT, IN eid_to_change) /*change type - home(H), phone(P), office(O), did(D)*/
+RETURNS VOID AS $$
+BEGIN
+	IF (change_type = 'H') THEN UPDATE Employees SET home = new_value WHERE eid = eid_to_change;
+	ELSEIF (change_type = 'P') THEN UPDATE Employees SET phone = new_value WHERE eid = eid_to_change;
+	ELSEIF (change_type = 'O') THEN UPDATE Employees SET office = new_value WHERE eid = eid_to_change;
+	ELSEIF (change_type = 'D') THEN UPDATE Employees SET did = new_value WHERE eid = eid_to_change;
+	END IF;
 END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION remove_employee(INT del_eid)
 RETURNS VOID AS 
-
 $$ BEGIN
 	UPDATE Employees 
 	SET resign = (SELECT(CURRENT_DATE))
 	WHERE eid = del_eid;	
+END; $$ LANGUAGE plpgsql;
+
 /*TODO RESIGN -> 
 	they are no longer allowed to book or approve any meetings rooms. Additionally, any future records (e.g., future
 meetings) are removed. create tigger to auto do this after employee remove*/
-
-
+CREATE OR REPLACE FUNCTION resign_from_meetings() RETURNS TRIGGER AS $$
+BEGIN
+	DELETE FROM Participants WHERE eid = NEW.eid AND "date" >= (SELECT(CURRENT_DATE));
 END; $$ LANGUAGE plpgsql;
 
+CREATE TRIGGER resign_meetings
+AFTER UPDATE ON Employees
+FOR EACH ROW WHEN NEW.resign IS NOT NULL
+EXCECUTE FUNCTION resign_from_meetings();
 
 -- CORE
 DROP FUNCTION IF EXISTS 
@@ -86,7 +149,7 @@ END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION book_room(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
 RETURNS VOID AS 
 /* TODO TRIGGER TO CHECK AVAILABILITY */
-/* TODO CHECK EMPLOYEE IS MANAGER/SENIOR */
+/* TODO CHECK EMPLOYEE IS MANAGER/SENIOR AND CHECK IF PERSON ALR RESIGNED*/
 DECLARE
 	-- CHECK IF ADDING A FEVER PERSON, NO FEVER THEN ADD
 	fever BOOLEAN := SELECT fever FROM HealthDeclaration 
@@ -137,7 +200,7 @@ END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION approve_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN mid INT)
 RETURNS VOID AS 
-/* TODO TRIGGER TO CHECK MANAGER AND BOOKER SAME DEPT */
+/* TODO TRIGGER TO CHECK MANAGER AND BOOKER SAME DEPT AND WHETHER MANAGER IS RESIGNED*/
 DECLARE
 	booker INT := SELECT bid FROM "Sessions" WHERE  ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor");
 $$ BEGIN
