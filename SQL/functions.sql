@@ -2,7 +2,8 @@
 
 /* TODO Create Trigger Functions */
 -- BASIC
-DROP FUNCTION IF EXISTS add_department, remove_department, add_room, change_capacity, add_employee, remove_employee; 
+DROP FUNCTION IF EXISTS add_department, remove_department, add_room,
+ change_capacity, add_employee, remove_employee, update_room_did, update_enfo; 
 
 CREATE OR REPLACE FUNCTION add_department(IN id INT, IN dpt_name TEXT)
 RETURNS VOID AS 
@@ -15,7 +16,7 @@ CREATE OR REPLACE FUNCTION remove_department(IN id INT)
 RETURNS VOID AS 
 $$ BEGIN
 	/*TODO Checking no employees under department*/
-	IF id IN (SELECT UNIQUE did FROM Employees) THEN raise_application_error(-20001,'Employees with current department id still exist');
+	IF (id IN (SELECT UNIQUE(did) FROM Employees)) THEN raise_application_error(-20001,'Employees with current department id still exist');
 
 	/*TODO Changing all MeetingRooms to be under Department 0 (HR/Management - report)*/
 	ELSE UPDATE MeetingRooms SET did = 0 WHERE did = id;	
@@ -30,9 +31,9 @@ CREATE OR REPLACE FUNCTION add_room(IN floor_num INT, IN room_num INT, IN room_n
 RETURNS VOID AS 
 $$ BEGIN
 	
-	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id),
+	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id)
 	INSERT INTO Updates VALUES ((SELECT CURRENT_DATE), room_num, floor_num, capacity, manager_id);
-	END IF;
+
 END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION check_room_existance() RETURNS TRIGGER AS $$
@@ -86,8 +87,8 @@ END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION add_employee(IN ename TEXT, IN home INT, IN phone INT, IN office INT, IN did INT, IN e_kind TEXT /*J or S or M*/)
 RETURNS VOID AS $$
 DECLARE
-	email := '';
-	eid := 0;
+	email TEXT := '';
+	eid INT := 0;
 BEGIN
 	eid := (SELECT MAX(eid) FROM Employees) + 1;
 	email := (SELECT CONCAT(ename, eid, '@ilovenus.com'));
@@ -100,17 +101,18 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 
 /*TODO Create function to update employee info */
-CREATE OR REPLACE FUNCTION update_enfo(IN change_type TEXT, IN new_value INT, IN eid_to_change) /*change type - home(H), phone(P), office(O), did(D)*/
+CREATE OR REPLACE FUNCTION update_enfo(IN change_type TEXT, IN new_value INT, IN eid_to_change INT) /*change type - home(H), phone(P), office(O), did(D)*/
 RETURNS VOID AS $$
 BEGIN
 	IF (change_type = 'H') THEN UPDATE Employees SET home = new_value WHERE eid = eid_to_change;
 	ELSEIF (change_type = 'P') THEN UPDATE Employees SET phone = new_value WHERE eid = eid_to_change;
 	ELSEIF (change_type = 'O') THEN UPDATE Employees SET office = new_value WHERE eid = eid_to_change;
 	ELSEIF (change_type = 'D') THEN UPDATE Employees SET did = new_value WHERE eid = eid_to_change;
+	ELSE raise_application_error(-20001,'Invalid variable type input');
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION remove_employee(INT del_eid)
+CREATE OR REPLACE FUNCTION remove_employee(IN del_eid INT)
 RETURNS VOID AS 
 $$ BEGIN
 	UPDATE Employees 
