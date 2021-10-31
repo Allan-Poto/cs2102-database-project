@@ -105,13 +105,20 @@ DECLARE
 	email TEXT := '';
 	eid INT := 0;
 BEGIN
-	eid := (SELECT MAX(eid) FROM Employees) + 1;
+	IF did NOT IN (SELECT d.did FROM Departments d) THEN RAISE EXCEPTION 'Department does not exist';
+	ELSEIF (e_kind <> 'S') AND (e_kind <> 'J') AND (e_kind <> 'M') THEN RAISE EXCEPTION 'Invalid Employee kind';
+	ELSE
+	eid := (SELECT MAX(e.eid) FROM Employees e) + 1;
 	email := (SELECT CONCAT(ename, eid, '@ilovenus.com'));
 	INSERT INTO Employees VALUES (eid, ename, email, home, phone, office, NULL, did, NULL);
+	END IF;
+
 	IF (e_kind = 'J') THEN INSERT INTO Junior VALUES(eid);
-	ELSEIF (e_kind = 'S') THEN INSERT INTO Senior VALUES(eid);
-	ELSEIF (e_kind = 'M') THEN INSERT INTO Manager VALUES(eid);	
-	ELSE RAISE EXCEPTION 'Invalid Employee Type';
+	ELSE INSERT INTO Booker VALUES(eid);
+	END IF;
+
+	IF (e_kind = 'S') THEN INSERT INTO Senior VALUES(eid);
+	ELSE INSERT INTO Manager VALUES(eid);	
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
@@ -125,7 +132,7 @@ BEGIN
 	ELSEIF (change_type = 'D') THEN UPDATE Employees SET did = new_value WHERE eid = eid_to_change;
 	ELSE RAISE EXCEPTION 'Invalid variable type input';
 	END IF;
-	
+
 END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION remove_employee(IN del_eid INT)
