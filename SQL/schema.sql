@@ -1,4 +1,4 @@
-DROP DATABASE IF EXISTS cs2102_project;
+ DROP DATABASE IF EXISTS cs2102_project;
 CREATE DATABASE cs2102_project;
 
 \c cs2102_project
@@ -80,7 +80,8 @@ CREATE TABLE "Sessions" (
 	approver INT DEFAULT NULL, /* The manager who approved the session */
 	PRIMARY KEY("time", "date", room, "floor"), 
 	FOREIGN KEY (bid) REFERENCES Booker (eid), 
-	FOREIGN KEY (room, "floor") REFERENCES MeetingRooms 
+	FOREIGN KEY (room, "floor") REFERENCES MeetingRooms
+	FOREGIN KEY (approver) REFERENCES Manager
 ) ;
 
 CREATE TABLE Participants ( /* Each entry is a participant for a certain session */
@@ -90,7 +91,7 @@ CREATE TABLE Participants ( /* Each entry is a participant for a certain session
 	room INT,
 	"floor" INT,
 	PRIMARY KEY(eid, "time", "date", room, "floor"),
-	FOREIGN KEY ("time", "date", room, "floor") REFERENCES "Sessions" ("time", "date", room, "floor") ON DELETE CASCADE
+	FOREIGN KEY ("time", "date", room, "floor") REFERENCES "Sessions" ("time", "date", room, "floor")
 );
 
 CREATE TABLE HealthDeclaration (
