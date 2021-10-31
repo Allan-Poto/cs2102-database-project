@@ -143,16 +143,18 @@ FOR EACH ROW EXECUTE FUNCTION resign_from_meetings();
 DROP FUNCTION IF EXISTS 
 	search_room, book_room, unbook_room, join_meeting, leave_meeting, approve_meeting CASCADE;
 
+/* CHECK DONE
+SELECT * FROM search_room(3,'2021-11-05',15,18); */
 CREATE OR REPLACE FUNCTION search_room(IN cap INT, IN bdate DATE, IN start_hour INT, IN end_hour INT)
-RETURNS TABLE(rfloor INT, mroom INT, dept INT, capa INT) AS $$
+RETURNS TABLE (rfloor INT, mroom INT, dept INT, capa INT) AS $$
 BEGIN
 	RETURN QUERY WITH Occupied AS (
-		SELECT DISTINCT("floor", room)
+		SELECT DISTINCT "floor", room
 		FROM "Sessions" 
-		WHERE "time" >= start_hour AND "time" < end_hour
+		WHERE "time" >= start_hour AND "time" < end_hour AND "date" = bdate
 	)
 	SELECT a."floor", a.room, b.did, c.capacity
-	FROM (SELECT "floor", room FROM MeetingRooms EXCEPT SELECT * FROM Occupied) a,
+	FROM ((SELECT "floor", room FROM MeetingRooms) EXCEPT (SELECT * FROM Occupied)) a,
 		MeetingRooms b, Updates c
 	WHERE a."floor" = b."floor" AND a."room" = b."room"
 	AND a."floor" = c."floor" AND a."room" = c."room"
@@ -160,30 +162,34 @@ BEGIN
 	ORDER BY capacity;	
 END; $$ LANGUAGE plpgsql;
 
-
+/* CHECK DONE
+SELECT book_room(3,3,'2021-11-11',13, 14,36); */
 CREATE OR REPLACE FUNCTION book_room(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN booker INT)
 RETURNS VOID AS $$
 DECLARE
 	today DATE := (SELECT CURRENT_DATE);
 	fever BOOLEAN := (SELECT fever FROM HealthDeclaration WHERE (eid = booker AND "date" = today));
 	resign_date DATE := (SELECT resign FROM Employees WHERE eid = booker);
-	eed DATE := (SELECT exposure_end_date FROM Employees WHERE eid = booker);
+	eed DATE := (SELECT COALESCE(exposure_end_date,CURRENT_DATE-1) FROM Employees WHERE eid = booker);
 	avail BOOLEAN := TRUE;
 	hour INT := start_hour;
 BEGIN
 	while hour < end_hour LOOP
-		IF ((SELECT EXISTS(SELECT * from "Sessions" WHERE "time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor) = 1)) THEN 
-			avail = FALSE;
+		IF ((SELECT EXISTS(SELECT * from "Sessions" WHERE "time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor) = TRUE)) THEN 
+			avail := FALSE;
 		END IF;
-		hour = hour + 1;
+		hour := hour + 1;
 	END LOOP;
 
-	IF ((booker IN (SELECT eid FROM Booker)) AND (resign_date IS NULL) AND (fever = FALSE) AND (eed < today) AND (avail = TRUE)) THEN
+	IF ((SELECT booker IN (SELECT eid FROM Booker)) AND (resign_date IS NULL) AND (fever = FALSE) AND (eed < today) AND (avail = TRUE)) THEN
 		INSERT INTO "Sessions"("time", "date", room, "floor", bid) VALUES (start_hour, bdate, mroom, rfloor, booker);
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
-
+/* CHECK DONE
+BOOKER CAN UNBOOK: SELECT unbook_room(3,3,'2021-11-02', 23, 00, 37);
+NOT THE BOOKER CANNOT UNBOOK: SELECT unbook_room(4,3,'2021-11-03', 13, 00, 2);
+*/
 CREATE OR REPLACE FUNCTION unbook_room(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN bookerid INT)
 RETURNS VOID AS $$
 BEGIN
@@ -191,8 +197,8 @@ BEGIN
 	DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = bookerid);
 END; $$ LANGUAGE plpgsql;
 
-/* CHECK FAILED: INVALID IN
-SELECT join_meeting(4,3,"2021-11-03", 13, 15, 2); */
+/* CHECK DONE
+SELECT join_meeting(4,3,'2021-11-03', 13, 15, 2); */
 CREATE OR REPLACE FUNCTION join_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN employee INT)
 RETURNS VOID AS $$
 DECLARE
@@ -203,9 +209,10 @@ DECLARE
 					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
 	participants INT := (SELECT COUNT(*) FROM Participants
 					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
-	capacity INT := (SELECT capacity FROM Updates WHERE "date" <= today ORDER BY "date" DESC LIMIT 1);
+	capacity INT := (SELECT capacity FROM Updates 
+					WHERE room = mroom AND "floor" = rfloor AND "date" <= today ORDER BY "date" DESC LIMIT 1);
 	resign_date DATE := (SELECT resign FROM Employees WHERE eid = employee);
-	eed DATE := (SELECT exposure_end_date FROM Employees WHERE eid = employee);
+	eed DATE := (SELECT COALESCE(exposure_end_date,CURRENT_DATE-1) FROM Employees WHERE eid = employee);
 BEGIN
 	IF ((fever = FALSE) AND (approver = 0) AND (participants+1 <= capacity) AND (resign_date IS NULL) AND (eed < today)) THEN
 		INSERT INTO Participants VALUES (employee, start_hour, bdate, mroom, rfloor);
