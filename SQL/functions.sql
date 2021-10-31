@@ -225,7 +225,7 @@ DROP TRIGGER IF EXISTS
 	fever_check ON HealthDeclaration CASCADE;
 
 DROP FUNCTION IF EXISTS 
-	update_fever_status, declare_health, update_contact_tracing, contact_tracing CASCADE;
+	update_fever_status, declare_health, contact_tracing, update_contact_tracing CASCADE;
 
 CREATE OR REPLACE FUNCTION update_fever_status()
 RETURNS TRIGGER AS $$
@@ -240,26 +240,23 @@ CREATE TRIGGER fever_update
 BEFORE INSERT ON HealthDeclaration
 FOR EACH ROW EXECUTE FUNCTION update_fever_status();
 
+
 CREATE OR REPLACE FUNCTION declare_health
-	(IN employee_id INT, IN declaration_date DATE, IN temperature FLOAT)
+	(IN employee_id INT, IN temperature FLOAT)
 RETURNS VOID AS $$ 
+DECLARE
+	declaration_date DATE = (SELECT CURRENT_DATE);
 BEGIN
-	INSERT INTO HealthDeclaration(eid, "date", temp) VALUES(employee_id, declaration_date, temperature);
+	IF (SELECT EXISTS(SELECT 1 FROM Employees WHERE eid = employee_id AND (resign IS NULL) = false)) 
+	THEN RAISE EXCEPTION 'Employee % has already resigned as of %', employee_id, (SELECT resign FROM Employees WHERE eid = employee_id) USING HINT = 'INVALID EMPLOYEE';
+	END IF;
+
+	IF (temperature BETWEEN 34 AND 43) THEN  
+		INSERT INTO HealthDeclaration(eid, "date", temp) VALUES(employee_id, declaration_date, temperature);
+	ELSE RAISE EXCEPTION 'Invalid Temperature ---> %', temperature USING HINT = "Please check your temperature";
+	END IF;
 END; $$ LANGUAGE plpgsql;
 
-/*TODO Update status of those with close contact in the event of fever, including canceling meeting etc*/ 
-CREATE OR REPLACE FUNCTION update_contact_tracing()
-RETURNS TRIGGER AS $$
-BEGIN
-	/*TODO Remove employee from all future meetings -> Participants List*/
-	/*TODO Cancel room booked by this employee -> remove Session*/
-	/*TODO Edit exposure end_date for close contacts*/
-	/*TODO Remove employees contacted from meeting for next 7 days*/
-END; $$ LANGUAGE plpgsql; 
-
-CREATE TRIGGER fever_check
-AFTER INSERT ON HealthDeclaration
-EXECUTE FUNCTION update_contact_tracing();
 
 CREATE OR REPLACE FUNCTION contact_tracing
 	(IN employee_id INT, IN trace_from DATE)
@@ -267,25 +264,52 @@ RETURNS TABLE(contacted INT) AS
 $$ BEGIN
 	/*Check if health declaration was done by the employee*/
 	IF (SELECT EXISTS(SELECT 1 FROM HealthDeclaration WHERE eid = employee_id AND "date" = trace_from)) THEN 
+		/*Check if that employee has a fever on the given date*/
 		IF(SELECT EXISTS(SELECT 1 FROM HealthDeclaration WHERE eid = employee_id AND "date" = trace_from AND fever = true)) THEN
-			CREATE TEMP TABLE contacted AS  
-				/*FIXME Not returning the correct values for any date other than '2021-10-29'*/
+			CREATE TEMP TABLE contacted AS
 				WITH meetings_attended AS ( 
 					SELECT "time", "date", room, "floor" 
 					FROM Participants 
 					WHERE eid = employee_id AND ("date" BETWEEN trace_from - interval '3 day' AND trace_from) 
 				) 
-				SELECT DISTINCT eid 
-				FROM Participants p LEFT JOIN meetings_attended ma
+				SELECT DISTINCT eid AS contacts
+				FROM Participants p RIGHT JOIN meetings_attended ma
 				ON p."time" = ma."time" AND p."date" = ma."date" 
-				AND p.room = ma.room AND p."floor" = ma."floor"
+				AND p.room = ma.room AND p."floor" = ma."floor" AND eid<>employee_id
 			;
-			RETURN QUERY SELECT * FROM contacted;
-			DROP TABLE IF EXISTS contacted;
+			RETURN QUERY SELECT contacts FROM contacted;
+			DROP TABLE IF EXISTS contacted; 
+		ELSE RAISE EXCEPTION 'Employee % did not have fever on %', employee_id, trace_from;
 		END IF;
+	ELSE RAISE EXCEPTION 'Employee % did not declare health on %', employee_id, trace_from USING HINT = 'No records found';
 	END IF;
 END; 
 $$ LANGUAGE plpgsql;
+
+/*Update status of those with close contact in the event of fever, including canceling meeting etc*/ 
+CREATE OR REPLACE FUNCTION update_contact_tracing()
+RETURNS TRIGGER AS $$
+BEGIN
+	/*First cancel all future rooms booked by this Employee*/
+	DELETE FROM "Sessions" AS s WHERE s.bid = NEW.eid AND s."date" >= NEW."date";
+	/*Remove employee from all future meetings that he is not the booker*/
+	DELETE FROM Participants AS p WHERE p.eid = NEW.eid AND p."date" >= NEW."date";
+	CREATE TEMP TABLE close_contacts ON COMMIT DROP AS
+		SELECT contact_tracing(NEW.eid, NEW."date")
+	;
+	/*Edit exposure end_date for close contacts*/
+	UPDATE Employees AS e SET exposure_end_date = (NEW."date" + interval '7 day') WHERE e.eid IN (SELECT contact_tracing FROM close_contacts);
+	/*Remove employees contacted from meeting for next 7 days*/
+	DELETE FROM "Sessions" AS s WHERE s.bid IN (SELECT contact_tracing FROM close_contacts) AND ("date" BETWEEN NEW."date" AND (NEW."date" + interval '7 day'));
+	DELETE FROM Participants AS p WHERE p.eid IN (SELECT contact_tracing FROM close_contacts) AND ("date" BETWEEN NEW."date" AND (NEW."date" + interval '7 day'));
+	RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER fever_check
+AFTER INSERT ON HealthDeclaration
+FOR EACH ROW WHEN (NEW.fever = true)
+EXECUTE FUNCTION update_contact_tracing();
+
 
 -- ADMIN
 /* DONE */
