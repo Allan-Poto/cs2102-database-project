@@ -42,10 +42,9 @@ END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION check_room_existance() RETURNS TRIGGER AS $$
 BEGIN
 	/*TODO check if current floor and room is alr occupied. if not, then insert*/
-	IF (SELECT COUNT(*) FROM MeetingRooms WHERE room = NEW.room AND "floor" = NEW."floor") != 0 
+	IF (SELECT COUNT(*) FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num) != 0 
 	THEN RAISE EXCEPTION 'Specified Room already exists';
 	END IF;
-	RETURN NULL;
 END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER room_existance
@@ -53,21 +52,13 @@ BEFORE INSERT ON MeetingRooms
 FOR EACH STATEMENT EXECUTE FUNCTION check_room_existance();
 
 /*TODO update_room*/
-CREATE OR REPLACE FUNCTION update_room_did(IN floor_num INT, IN room_num INT, IN new_did INT) 
-RETURNS VOID AS $$	
+CREATE OR REPLACE FUNCTION update_room_did(IN room_num INT, IN floor_num INT, IN new_did INT) 
+RETURNS VOID AS $$
 BEGIN
-	CREATE TEMP TABLE all_rooms ON COMMIT DROP AS
-		(SELECT room FROM MeetingRooms WHERE "floor" = floor_num);
-
-	IF (room_num NOT IN (SELECT room FROM all_rooms)) THEN RAISE EXCEPTION 'Room Does not exist';
-	ELSEIF new_did IN (SELECT did FROM Departments) THEN
 	UPDATE MeetingRooms set did = new_did WHERE room = room_num AND "floor" = floor_num;
-	ELSE RAISE EXCEPTION 'Department does not exist'; 
-	END IF;
-
 END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION change_capacity(IN floor_num INT, IN room_num INT, IN manager_id INT, IN new_capacity INT, IN curr_date DATE, 
+CREATE OR REPLACE FUNCTION change_capacity(IN floor_num INT, IN room_num TEXT, IN manager_id INT, IN new_capacity INT, IN curr_date DATE, 
 IN change_date DATE)
 RETURNS VOID AS 
 $$ BEGIN
@@ -125,7 +116,6 @@ BEGIN
 	ELSEIF (change_type = 'D') THEN UPDATE Employees SET did = new_value WHERE eid = eid_to_change;
 	ELSE RAISE EXCEPTION 'Invalid variable type input';
 	END IF;
-	
 END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION remove_employee(IN del_eid INT)
@@ -143,7 +133,6 @@ CREATE OR REPLACE FUNCTION resign_from_meetings() RETURNS TRIGGER AS $$
 BEGIN
 	IF (NEW.resign IS NOT NULL) THEN DELETE FROM Participants WHERE eid = NEW.eid AND "date" >= (SELECT(CURRENT_DATE));
 	END IF;
-	RETURN NULL;
 END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER resign_meetings
@@ -348,6 +337,8 @@ EXECUTE FUNCTION update_contact_tracing();
 
 
 -- ADMIN
+DROP FUNCTION IF EXISTS 
+	non_compliance, view_booking_report, view_future_meeting, view_manager_report CASCADE;
 /* DONE */
 CREATE OR REPLACE FUNCTION non_compliance
 	(IN "start_date" DATE, IN end_date DATE)
