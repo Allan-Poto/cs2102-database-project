@@ -66,6 +66,9 @@ $$ BEGIN
 	IF change_date <= curr_date THEN RAISE EXCEPTION 'Date is in the past';
 	/*TODO Must be a MANAGER*/
 	ELSEIF manager_id NOT IN (SELECT eid FROM Manager) THEN RAISE EXCEPTION 'Employee is not a Manager';
+	/*TODO only manager in same department can change capacity*/
+	ELSEIF ((SELECT did FROM Employees WHERE eid = manager_id) != (SELECT did FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num))
+	THEN RAISE EXCEPTION 'Only a manager in same department as this room can change its capacity';
 	
 	ELSE 
 	INSERT INTO Updates VALUES (change_date, room_num, floor_num, new_capacity, manager_id);
