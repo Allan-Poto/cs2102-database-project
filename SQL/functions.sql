@@ -138,80 +138,99 @@ FOR EACH ROW EXECUTE FUNCTION resign_from_meetings();
 
 -- CORE
 DROP FUNCTION IF EXISTS 
-	search_room, book_room, unbook_room, join_meeting, leave_meeting, approve_meeting;
+	search_room, book_room, unbook_room, join_meeting, leave_meeting, approve_meeting CASCADE;
 
-CREATE OR REPLACE FUNCTION search_room(IN cap INT, IN "date" DATE, IN start_hour INT, IN end_hour INT)
-RETURNS TABLE("floor" INT, room INT, dept INT, cap INT) AS 
+CREATE OR REPLACE FUNCTION search_room(IN cap INT, IN bdate DATE, IN start_hour INT, IN end_hour INT)
+RETURNS TABLE(rfloor INT, mroom INT, dept INT, capa INT) AS $$
+BEGIN
+	RETURN QUERY WITH Occupied AS (
+		SELECT DISTINCT("floor", room)
+		FROM "Sessions" 
+		WHERE "time" >= start_hour AND "time" < end_hour
+	)
+	SELECT a."floor", a.room, b.did, c.capacity
+	FROM (SELECT "floor", room FROM MeetingRooms EXCEPT SELECT * FROM Occupied) a,
+		MeetingRooms b, Updates c
+	WHERE a."floor" = b."floor" AND a."room" = b."room"
+	AND a."floor" = c."floor" AND a."room" = c."room"
+	ORDER BY capacity;	
+END; $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION book_room(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN booker INT)
+RETURNS VOID AS $$
 DECLARE
-	hour = start_hour;
-$$ BEGIN
-	while hour <= end_hour LOOP
-		/* TODO ANYONE HAS ANY IDEA???*/
+	today DATE := (SELECT CURRENT_DATE);
+	fever BOOLEAN := (SELECT fever FROM HealthDeclaration WHERE (eid = booker AND "date" = today));
+	resign_date DATE := (SELECT resign FROM Employees WHERE eid = booker);
+	eed DATE := (SELECT exposure_end_date FROM Employees WHERE eid = booker);
+	avail BOOLEAN := TRUE;
+	hour INT := start_hour;
+BEGIN
+	while hour < end_hour LOOP
+		IF ((SELECT EXISTS(SELECT * from "Sessions" WHERE "time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor) = 1)) THEN 
+			avail = FALSE;
+		END IF;
+		hour = hour + 100;
 	END LOOP;
-END; $$ LANGUAGE plpgsql;
 
-
-CREATE OR REPLACE FUNCTION book_room(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
-RETURNS VOID AS 
-/* TODO TRIGGER TO CHECK AVAILABILITY */
-/* TODO CHECK EMPLOYEE IS MANAGER/SENIOR AND CHECK IF PERSON ALR RESIGNED*/
-DECLARE
-	-- CHECK IF ADDING A FEVER PERSON, NO FEVER THEN ADD
-	fever BOOLEAN := SELECT fever FROM HealthDeclaration 
-					WHERE eid = eid AND "date" = CURRENT_DATE();
-$$ BEGIN
-	IF (fever = 0) THEN INSERT INTO "Sessions" VALUES (start_hour, "date", room, "floor", eid, NULL);
-END; $$ LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE FUNCTION unbook_room(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
-RETURNS VOID AS 
-DECLARE
-	/* TODO CHECK SYNTAX (ACTUALLY NEED CHECK? IF THE BID NOT THE PERSON THEN NO ENTRY TO REMOVE?) */
-	booker INT := COALESCE(SELECT bid FROM "Sessions" WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND bid = eid),0);
-$$ BEGIN
-	DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND bid = eid);
-	IF (booker!=0) THEN DELETE FROM Participants WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor");
+	IF ((booker IN (SELECT eid FROM Booker)) AND (resign_date IS NULL) AND (fever = FALSE) AND (eed < today) AND (avail = TRUE)) THEN
+		INSERT INTO "Sessions"("time", "date", room, "floor", bid) VALUES (start_hour, bdate, mroom, rfloor, booker);
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION join_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
-RETURNS VOID AS 
-/* TODO TRIGGER TO CHECK CAP : CANNOT GET CAP , HOW TO GET DATE? */
+CREATE OR REPLACE FUNCTION unbook_room(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN bookerid INT)
+RETURNS VOID AS $$
+BEGIN
+	-- ON DELETING SESSION, ALL PARTICIPANTS IN THE SESSION WILL BE REMOVED FROM THE PARTICIPANTS TABLE
+	DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = bookerid);
+END; $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION join_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN employee INT)
+RETURNS VOID AS $$
 DECLARE
-	-- CHECK IF ADDING A FEVER PERSON, NO FEVER THEN ADD
-	fever BOOLEAN := SELECT fever FROM HealthDeclaration 
-					WHERE eid = eid AND "date" = CURRENT_DATE();
-	-- CHECK IF MEETING IS APPROVED, 0 MEANS NOT APPROVED YET
-	approver INT := SELECT COALESCE(approver,0) FROM "Sessions" 
-					WHERE "time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor";
-	-- FIND TOTAL NUMBER CURRENTLY IN MEETING, NEED TO CHECK AGAINST CAP LATER
-	participants INT := SELECT COUNT(*) FROM "Participants" 
-					WHERE "time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor";
-$$ BEGIN
-	/* TODO CHECK IF THIS SYNTAX CORRECT */
-	IF (fever = 0) AND (approver = 0) THEN INSERT INTO Participants VALUES (eid, start_hour, "date", room, "floor");
+	today DATE := (SELECT CURRENT_DATE);
+	fever BOOLEAN := (SELECT fever FROM HealthDeclaration 
+					WHERE eid = employee AND "date" = today);
+	approver INT := (SELECT COALESCE(approver,0) FROM "Sessions" 
+					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
+	participants INT := (SELECT COUNT(*) FROM Participants
+					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
+	capcacity INT := (SELECT "date" FROM Updates WHERE "date" <= today ORDER BY "date" DESC LIMIT 1);
+	resign_date DATE := (SELECT resign FROM Employees WHERE eid = employee);
+	eed DATE := (SELECT exposure_end_date FROM Employees WHERE eid = employee);
+BEGIN
+	IF ((fever = FALSE) AND (approver = 0) AND (participants+1 <= capacity) AND (resign_date IS NULL) AND (eed < today)) THEN
+		INSERT INTO Participants VALUES (employee, start_hour, bdate, mroom, rfloor);
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION leave_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN eid INT)
-RETURNS VOID AS 
-/* TODO TRIGGER TO CHECK SESSION NOT APPROVED, NO MORE CHANGES AFTER APPROVE */
-$$ BEGIN
-	DELETE FROM Participants WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND eid = eid);
+CREATE OR REPLACE FUNCTION leave_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN employee INT)
+RETURNS VOID AS $$
+DECLARE
+	approver INT := (SELECT COALESCE(approver,0) FROM "Sessions" 
+					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
+BEGIN
+	IF (approver = 0) THEN DELETE FROM Participants WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND eid = employee);
+	END IF;
 END; $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION approve_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN mid INT)
-RETURNS VOID AS 
-/* TODO TRIGGER TO CHECK MANAGER AND BOOKER SAME DEPT AND WHETHER MANAGER IS RESIGNED*/
+RETURNS VOID AS $$
 DECLARE
-	booker INT := SELECT bid FROM "Sessions" WHERE  ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor");
-$$ BEGIN
-	UPDATE "Sessions"
-	SET approver = mid
-	WHERE ("time" = start_hour AND "date" = "date" AND room = room AND "floor" = "floor" AND bid = booker);
+	booker INT := (SELECT bid FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor));
+	booker_dept INT := (SELECT did FROM Employees WHERE eid = booker);
+	manager_dept INT := (SELECT e.did FROM Employees e JOIN Booker b ON (e.eid = b.eid AND e.eid = mid));
+	resign_date DATE := (SELECT resign FROM Employees WHERE eid = mid);
+BEGIN
+	IF (booker_dept = manager_dept AND resign_date IS NULL) THEN
+		UPDATE "Sessions"
+		SET approver = manager
+		WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = booker);
+	END IF;
 END; $$ LANGUAGE plpgsql;
 
 
