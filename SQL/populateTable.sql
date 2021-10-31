@@ -242,7 +242,7 @@ insert into HealthDeclaration (eid, "date", temp, fever) values (36, CURRENT_DAT
 insert into HealthDeclaration (eid, "date", temp, fever) values (37, CURRENT_DATE - interval 'day 1', 36.6, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (39, CURRENT_DATE - interval 'day 1', 36.6, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (40, CURRENT_DATE - interval 'day 1', 36.7, false);
-insert into HealthDeclaration (eid, "date", temp, fever) values (1, CURRENT_DATE, 37.0, false);
+insert into HealthDeclaration (eid, "date", temp, fever) values (1, CURRENT_DATE, 36.4, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (2, CURRENT_DATE, 36.4, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (3, CURRENT_DATE, 36.5, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (4, CURRENT_DATE, 36.1, false);
@@ -261,7 +261,6 @@ insert into HealthDeclaration (eid, "date", temp, fever) values (22, CURRENT_DAT
 insert into HealthDeclaration (eid, "date", temp, fever) values (23, CURRENT_DATE, 36.9, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (24, CURRENT_DATE, 36.9, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (25, CURRENT_DATE, 36.9, false);
-insert into HealthDeclaration (eid, "date", temp, fever) values (26, CURRENT_DATE, 37.1, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (27, CURRENT_DATE, 36.7, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (28, CURRENT_DATE, 37.2, false);
 insert into HealthDeclaration (eid, "date", temp, fever) values (29, CURRENT_DATE, 37.2, false);
@@ -306,7 +305,7 @@ insert into Participants (eid, "time", "date", room, "floor") values (5, 18, CUR
 insert into Participants (eid, "time", "date", room, "floor") values (36, 18, CURRENT_DATE, 1, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (2, 18, CURRENT_DATE, 1, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (9, 18, CURRENT_DATE, 1, 4);
-insert into Participants (eid, "time", "date", room, "floor") values (10, 18, CURRENT_DATE, 1, 4);
+insert into Participants (eid, "time", "date", room, "floor") values (27, 18, CURRENT_DATE, 1, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (26, 18, CURRENT_DATE + interval '1 day', 1, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (36, 18, CURRENT_DATE + interval '1 day', 1, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (1, 18, CURRENT_DATE + interval '1 day', 1, 4);
@@ -323,6 +322,7 @@ insert into Participants (eid, "time", "date", room, "floor") values (32, 13, CU
 insert into Participants (eid, "time", "date", room, "floor") values (18, 13, CURRENT_DATE + interval '3 day', 3, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (19, 13, CURRENT_DATE + interval '3 day', 3, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (1, 13, CURRENT_DATE + interval '3 day', 3, 4);
+insert into Participants (eid, "time", "date", room, "floor") values (26, 18, CURRENT_DATE + interval '4 day', 1, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (27, 18, CURRENT_DATE + interval '4 day', 2, 3);
 insert into Participants (eid, "time", "date", room, "floor") values (36, 18, CURRENT_DATE + interval '4 day', 2, 3);
 insert into Participants (eid, "time", "date", room, "floor") values (1, 18, CURRENT_DATE + interval '4 day', 2, 3);
@@ -340,7 +340,7 @@ insert into Participants (eid, "time", "date", room, "floor") values (26, 18, CU
 insert into Participants (eid, "time", "date", room, "floor") values (1, 18, CURRENT_DATE + interval '6 day', 1, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (2, 18, CURRENT_DATE + interval '6 day', 1, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (3, 18, CURRENT_DATE + interval '6 day', 1, 4);
-insert into Participants (eid, "time", "date", room, "floor") values (26, 16, CURRENT_DATE + interval '7 day', 2, 4);
+insert into Participants (eid, "time", "date", room, "floor") values (33, 16, CURRENT_DATE + interval '7 day', 2, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (7, 16, CURRENT_DATE + interval '7 day', 2, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (8, 16, CURRENT_DATE + interval '7 day', 2, 4);
 insert into Participants (eid, "time", "date", room, "floor") values (9, 16, CURRENT_DATE + interval '7 day', 2, 4);
