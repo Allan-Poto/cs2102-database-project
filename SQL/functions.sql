@@ -344,21 +344,23 @@ EXECUTE FUNCTION update_contact_tracing();
 
 
 -- ADMIN
+DROP FUNCTION IF EXISTS 
+	non_compliance, view_booking_report, view_future_meeting, view_manager_report CASCADE;
 /* DONE */
 CREATE OR REPLACE FUNCTION non_compliance
-	(IN start_date DATE, IN end_date DATE)
+	(IN "start_date" DATE, IN end_date DATE)
 RETURNS TABLE(eid INT, count BIGINT) AS $$
 #variable_conflict use_column
 DECLARE
-	days INT := end_date - start_date + 1;	
+	"days" INT := end_date - "start_date" + 1;	
 BEGIN
 	return query 
-	SELECT eid, days - COUNT(*) as count /* days is the 'correct' number of entries. count(*) is number of entries. we take the difference */
+	SELECT eid, "days" - COUNT(*) as "count" /* days is the 'correct' number of entries. count(*) is number of entries. we take the difference */
 	FROM HealthDeclaration
-	WHERE date >= start_date
-	AND date <= end_date
+	WHERE "date" >= "start_date"
+	AND "date" <= end_date
 	GROUP BY eid 
-	HAVING COUNT(*) <> days/* exclude employees who have the 'correct' number of entries. */
+	HAVING COUNT(*) <> "days" /* exclude employees who have the 'correct' number of entries. */
 	ORDER BY count DESC ; /* order by decreasing number of days, as stipulated */
 	
 END; 
@@ -368,7 +370,7 @@ $$ LANGUAGE plpgsql;
 /* DONE */
 /* This function doesn't change approval status to boolean. Hence approved status is determined by whether the 'approved' column is NULL (not approved) or an integer (approved) */
 CREATE OR REPLACE FUNCTION view_booking_report
-	(IN start_date DATE, IN eid INT) 
+	(IN "start_date" DATE, IN eid INT) 
 RETURNS TABLE ("floor" INT, room INT, "date" DATE, hour INT, approved INT) AS $$
 #variable_conflict use_column
 BEGIN
@@ -376,7 +378,7 @@ RETURN QUERY WITH SessionsRaw AS (
 		SELECT "floor", room, "date", "time", approver
 		FROM "Sessions" s
 		WHERE s.bid = eid
-		AND s."date" >= start_date
+		AND s."date" >= "start_date"
 	)
 	SELECT *
 	FROM SessionsRaw  
@@ -388,33 +390,33 @@ $$ LANGUAGE plpgsql;
 /* participants table contains all approved meetings already, hence no need to check if approved anot */
 /* note input eid is defined as eid1. This is to avoid p.eid = eid in the query, which will reference p.eid itself i.e simply returns meetings from start_date on and ignoring input eid */
 CREATE OR REPLACE FUNCTION view_future_meeting
-	(IN start_date DATE, IN eid1 INT)
+	(IN "start_date" DATE, IN eid1 INT)
 RETURNS TABLE ("floor" INT, room INT, "date" DATE, start_hour INT) AS $$
 #variable_conflict use_column
 BEGIN
 RETURN QUERY
-SELECT floor,room, date, time
+SELECT floor,room, "date", "time"
 FROM participants p
 WHERE p.eid = eid1
-AND p.date >= start_date
-ORDER BY date, time;
+AND p.date >= "start_date"
+ORDER BY "date", "time";
 END; 
 $$ LANGUAGE plpgsql;
 
 /* DONE */
 CREATE OR REPLACE FUNCTION view_manager_report
-	(IN start_date DATE, eid1 INT)
-RETURNS TABLE(floor INT, room INT, date DATE, start_hour INT, eid INT) AS $$ 
+	(IN "start_date" DATE, eid1 INT)
+RETURNS TABLE(floor INT, room INT, "date" DATE, start_hour INT, eid INT) AS $$ 
 #variable_conflict use_column
 /* no need for trigger : query will naturally return empty table if ied is not that of a manager's */
 DECLARE
 	m_did INT := (SELECT did FROM employees NATURAL JOIN manager WHERE eid = eid1); /* get manager's dept id */
 BEGIN
 RETURN QUERY /*WITH ManagerInfo AS (select * from employees natural join manager where eid = eid1)*/
-SELECT floor, room, date, time, bid
+SELECT floor, room, "date", "time", bid
 FROM "Sessions" natural join meetingrooms
 WHERE did = m_did
-AND date >= start_date
+AND "date" >= "start_date"
 AND approver IS NULL ;
 	
 END; 
