@@ -156,6 +156,7 @@ BEGIN
 		MeetingRooms b, Updates c
 	WHERE a."floor" = b."floor" AND a."room" = b."room"
 	AND a."floor" = c."floor" AND a."room" = c."room"
+	AND capacity >= cap
 	ORDER BY capacity;	
 END; $$ LANGUAGE plpgsql;
 
@@ -174,7 +175,7 @@ BEGIN
 		IF ((SELECT EXISTS(SELECT * from "Sessions" WHERE "time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor) = 1)) THEN 
 			avail = FALSE;
 		END IF;
-		hour = hour + 100;
+		hour = hour + 1;
 	END LOOP;
 
 	IF ((booker IN (SELECT eid FROM Booker)) AND (resign_date IS NULL) AND (fever = FALSE) AND (eed < today) AND (avail = TRUE)) THEN
@@ -190,7 +191,8 @@ BEGIN
 	DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = bookerid);
 END; $$ LANGUAGE plpgsql;
 
-
+/* CHECK FAILED: INVALID IN
+SELECT join_meeting(4,3,"2021-11-03", 13, 15, 2); */
 CREATE OR REPLACE FUNCTION join_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN employee INT)
 RETURNS VOID AS $$
 DECLARE
@@ -201,7 +203,7 @@ DECLARE
 					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
 	participants INT := (SELECT COUNT(*) FROM Participants
 					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
-	capcacity INT := (SELECT "date" FROM Updates WHERE "date" <= today ORDER BY "date" DESC LIMIT 1);
+	capacity INT := (SELECT capacity FROM Updates WHERE "date" <= today ORDER BY "date" DESC LIMIT 1);
 	resign_date DATE := (SELECT resign FROM Employees WHERE eid = employee);
 	eed DATE := (SELECT exposure_end_date FROM Employees WHERE eid = employee);
 BEGIN
@@ -210,6 +212,9 @@ BEGIN
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
+/* CHECK DONE
+NOT APPROVED CAN LEAVE: SELECT leave_meeting(4,3,'2021-11-03', 13, 15, 1); 
+APPROVED CANNOT LEAVE: SELECT leave_meeting(3,3,'2021-11-02', 23, 00, 37); */
 CREATE OR REPLACE FUNCTION leave_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN employee INT)
 RETURNS VOID AS $$
 DECLARE
@@ -220,18 +225,19 @@ BEGIN
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
-
-CREATE OR REPLACE FUNCTION approve_meeting(IN "floor" INT, IN room INT, IN "date" DATE, IN start_hour INT, IN end_hour INT, IN mid INT)
+/* CHECK DONE
+SELECT approve_meeting(4,3,'2021-11-03',13,14,39); */
+CREATE OR REPLACE FUNCTION approve_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN mid INT)
 RETURNS VOID AS $$
 DECLARE
 	booker INT := (SELECT bid FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor));
 	booker_dept INT := (SELECT did FROM Employees WHERE eid = booker);
-	manager_dept INT := (SELECT e.did FROM Employees e JOIN Booker b ON (e.eid = b.eid AND e.eid = mid));
+	manager_dept INT := (SELECT e.did FROM Employees e JOIN Manager m ON (e.eid = m.eid AND e.eid = mid));
 	resign_date DATE := (SELECT resign FROM Employees WHERE eid = mid);
 BEGIN
 	IF (booker_dept = manager_dept AND resign_date IS NULL) THEN
 		UPDATE "Sessions"
-		SET approver = manager
+		SET approver = mid
 		WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = booker);
 	END IF;
 END; $$ LANGUAGE plpgsql;
