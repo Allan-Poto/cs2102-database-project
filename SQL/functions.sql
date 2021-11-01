@@ -41,7 +41,7 @@ END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION check_room_existance() RETURNS TRIGGER AS $$
 BEGIN
 	/*check if current floor and room is alr occupied. if not, then insert*/
-	IF (SELECT COUNT(*) FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num) != 0 
+	IF (SELECT COUNT(*) FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num) <> 0 
 	THEN RAISE EXCEPTION 'Specified Room already exists';
 	END IF;
 END; $$ LANGUAGE plpgsql;
