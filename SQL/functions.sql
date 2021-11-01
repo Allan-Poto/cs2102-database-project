@@ -6,6 +6,7 @@ DROP FUNCTION IF EXISTS add_department, remove_department, add_room,
 
 DROP TRIGGER IF EXISTS room_existance ON MeetingRooms;
 DROP TRIGGER IF EXISTS resign_meetings ON Employees;
+DROP TRIGGER IF EXISTS over_capacity ON Updates;
 
 CREATE OR REPLACE FUNCTION add_department(IN id INT, IN dpt_name TEXT)
 RETURNS VOID AS 
@@ -18,7 +19,7 @@ CREATE OR REPLACE FUNCTION remove_department(IN id INT)
 RETURNS VOID AS 
 $$ BEGIN
 	/* Checking no employees under department*/
-	IF (id IN (SELECT DISTINCT did FROM Employees)) THEN RAISE EXCEPTION 'Employees with current department id still exist';
+	IF (id IN (SELECT DISTINCT did FROM Employees WHERE resign IS NOT NULL)) THEN RAISE EXCEPTION 'Employees with current department id still exist';
 
 	/*Changing all MeetingRooms to be under Department 0 (HR/Management - report)*/
 	ELSE UPDATE MeetingRooms SET did = 0 WHERE did = id;	
@@ -70,21 +71,31 @@ $$ BEGIN
 	
 	ELSE 
 	INSERT INTO Updates VALUES (change_date, room_num, floor_num, new_capacity, manager_id);
-	/*remove all sessions that have more participants higher than new capacity*/
+	
+	
+	END IF;
+END; $$ LANGUAGE plpgsql;
+
+/*remove all sessions that have more participants higher than new capacity*/
+CREATE OR REPLACE FUNCTION check_capacity_constraint() RETURNS TRIGGER AS $$
+BEGIN
 	DELETE FROM "Sessions"
-	WHERE room = room_num 
-	AND "floor" = floor_num 
-	AND "date" >= change_date 
+	WHERE room = NEW.room
+	AND "floor" = NEW."floor" 
+	AND "date" >= NEW."date"
 	AND "time" IN(  SELECT ref."time"
 				    FROM (SELECT COUNT(eid) AS total_participants, "time", "date", room, "floor"
 		                 FROM Participants
 						 GROUP BY "time", "date", room, "floor") AS ref 
-					WHERE ref."date" >= change_date
-					AND ref.room = room_num
-					AND ref."floor" = floor_num
-					AND ref.total_participants > new_capacity);
-	END IF;
+					WHERE ref."date" >= NEW."date"
+					AND ref.room = NEW.room
+					AND ref."floor" = NEW."floor"
+					AND ref.total_participants > NEW.capacity);
 END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER over_capacity
+AFTER INSERT ON Updates
+FOR EACH ROW EXECUTE FUNCTION check_capacity_constraint();
 
 CREATE OR REPLACE FUNCTION add_employee(IN ename TEXT, IN home INT, IN phone INT, IN office INT, IN did INT, IN e_kind TEXT /*J or S or M*/)
 RETURNS VOID AS $$
