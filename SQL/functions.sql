@@ -4,7 +4,6 @@
 DROP FUNCTION IF EXISTS add_department, remove_department, add_room,
  change_capacity, add_employee, remove_employee, update_room_did, update_enfo; 
 
-DROP TRIGGER IF EXISTS room_existance ON MeetingRooms;
 DROP TRIGGER IF EXISTS resign_meetings ON Employees;
 DROP TRIGGER IF EXISTS over_capacity ON Updates;
 
@@ -39,25 +38,13 @@ $$ BEGIN
 
 END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION check_room_existance() RETURNS TRIGGER AS $$
-BEGIN
-	/*check if current floor and room is alr occupied. if not, then insert*/
-	IF (SELECT COUNT(*) FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num) <> 0 
-	THEN RAISE EXCEPTION 'Specified Room already exists';
-	END IF;
-END; $$ LANGUAGE plpgsql;
-
-CREATE TRIGGER room_existance
-BEFORE INSERT ON MeetingRooms
-FOR EACH STATEMENT EXECUTE FUNCTION check_room_existance();
-
 CREATE OR REPLACE FUNCTION update_room_did(IN room_num INT, IN floor_num INT, IN new_did INT) 
 RETURNS VOID AS $$
 BEGIN
 	UPDATE MeetingRooms set did = new_did WHERE room = room_num AND "floor" = floor_num;
 END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION change_capacity(IN floor_num INT, IN room_num TEXT, IN manager_id INT, IN new_capacity INT, IN curr_date DATE, 
+CREATE OR REPLACE FUNCTION change_capacity(IN floor_num INT, IN room_num INT, IN manager_id INT, IN new_capacity INT, IN curr_date DATE, 
 IN change_date DATE)
 RETURNS VOID AS 
 $$ BEGIN
@@ -91,6 +78,8 @@ BEGIN
 					AND ref.room = NEW.room
 					AND ref."floor" = NEW."floor"
 					AND ref.total_participants > NEW.capacity);
+
+	RETURN NULL;
 END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER over_capacity
