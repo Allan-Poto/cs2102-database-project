@@ -80,8 +80,8 @@ CREATE TABLE "Sessions" (
 	approver INT DEFAULT NULL, /* The manager who approved the session */
 	PRIMARY KEY("time", "date", room, "floor"), 
 	FOREIGN KEY (bid) REFERENCES Booker (eid), 
-	FOREIGN KEY (room, "floor") REFERENCES MeetingRooms
-	FOREGIN KEY (approver) REFERENCES Manager
+	FOREIGN KEY (room, "floor") REFERENCES MeetingRooms (room, "floor"),
+	FOREIGN KEY (approver) REFERENCES Manager (eid)
 ) ;
 
 CREATE TABLE Participants ( /* Each entry is a participant for a certain session */
@@ -91,7 +91,7 @@ CREATE TABLE Participants ( /* Each entry is a participant for a certain session
 	room INT,
 	"floor" INT,
 	PRIMARY KEY(eid, "time", "date", room, "floor"),
-	FOREIGN KEY ("time", "date", room, "floor") REFERENCES "Sessions" ("time", "date", room, "floor")
+	FOREIGN KEY ("time", "date", room, "floor") REFERENCES "Sessions" ("time", "date", room, "floor") ON DELETE CASCADE
 );
 
 CREATE TABLE HealthDeclaration (
