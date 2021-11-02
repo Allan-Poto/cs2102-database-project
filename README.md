@@ -9,7 +9,7 @@ Create a database cs2102_project in your postgres and the relevant tables)
 > `psql -U postgres -f schema.sql`  
 
 Add the relevant data to the tables  
-> `psql -U postgres -f populateTable.sql`  
+> `psql -U postgres -f data.sql`  
 
 Add the function to the database
 > `psql -U postgres -f functions.sql`
@@ -20,99 +20,122 @@ Add the function to the database
 
 ## NOTES REGARDING SCHEMA
 
-Overlapping keywords (Use quotations for reference)
+Overlapping keywords (Use quotations for reference)  
 
 - "floor"
 - "date"
 - "Sessions"
+- "time"
 
 ## DUMMY DATA SPECIFICS
 
 ### Settings
 
-- Company 1st Day: D-3 (3 Days before your CURRENT_DATE)
-- Current Date: D-DAY (THE DATE ON YOUR COMPUTER)
+- Company 1st Day: D-3 (3 Days before your CURRENT_DATE)  
+- Current Date: D-DAY (THE DATE ON YOUR COMPUTER)  
 
 ### Departments
 
-1. Engineering
-2. Support
-3. Services
-4. Marketing
-5. Sales
+Department ID: 0-indexed  
+
+0. Human Resource
+1. Management
+2. Marketing
+3. Operations  
 
 ### Employees
 
-Total number of Employees: 43  
-Each Department:
+Employee ID: 0-indexed  
+Total number of Employees: 20  
+Each Department:  
 
-- 5 Juniors
+- 2 Juniors
 - 2 Seniors
 - 1 Manager  
-**Note that Employees 41, 42, 43 are resigned junior, senior and manager respectively, all from Engineering department**
 
 ### Meeting Rooms
 
-- Floors: 5
-- Rooms per Floor: 5
-- Rooms per Dpt: 5  
+- Floors: 4 (0-indexed)  
+- Rooms per Floor: 2 (1-indexed)  
+- Rooms per Dpt: 2 (Same as Floor Number)  
 
 **Repeated room name (owl, eagle) on differnt floor**  
-**Dpt ID -> Floor belonging to that Dpt**
+**Dpt ID -> Floor belonging to that Dpt**  
 
 ### Updates
 
-Initial Capacity: 8  
+Initial Capacity: 5  
 Update ID: Manager of their respective Dpts  
-Update Date: D-3 (Company Start Date)
+Update Date: D-3 (Company Start Date)  
 
 ### Sessions
 
-Meeting List:  
-("time", "date", room, "floor", bid, approver)  
-(21, D-2, 2, 2, 29, 37); -- Consec timeslot  
-(22, D-2, 2, 2, 29, 37);  
-(23, D-2, 2, 2, 29, 37);  
-(18, D-1, 1, 4, 26, 36);  
-(18, D-DAY, 1, 4, 26, 36);  
-(18, D+1, 1, 4, 26, 36);  
-(23, D+2, 3, 3, 37, 37); -- Booked and approved by same Manager  
-(13, D+3, 3, 4, 32, null); -- Pending booking  
-(18, D+4, 2, 3, 27, 36); -- Different floor room  
-(15, D+4, 1, 4, 28, 37); -- Differnt timeslot  
-(18, D+5, 1, 4, 26, 36); -- Different date  
-(18, D+6, 1, 4, 26, 36); -- Different Capacity  
-(16, D+7, 2, 4, 26, 36); -- Future Session
+"Session 1":  
+(10, D-3, 1, 1, 1, 1);  
+(11, D-3, 1, 1, 1, 1);  
+(12, D-3, 1, 1, 1, 1);  
+-- Close_contact END LIMIT  
+-- Consec timeslot  
+-- Booked approved both manager  
+-- All personnels (1, 6, 7, 14, 15) from department '1'  
 
-Covered Testcases:
+"Session 2":  
+(15, D-1, 2, 0, 4, 0)  
+-- Close_contact D-1  
 
-- Diff floor room
-- Diff timeslot
-- Diff date
-- Consec timeslot
-- Booked and approved by same manager
-- Pending
-- Future session
+"Session 3":  
+(21, D-Day, 2, 1, 6, 1)
+-- Close_contact START LIMIT  
+-- Fever personnel (Manager 1)  
 
-Not covered:
+"Session 4":  
+ (16, D+1, 2, 1, 6, NULL)  
+-- exposure_end_date START LIMIT  
+-- Booked by close_contact 6 (To be Cancelled)  
+-- 1 Attendie  
 
-- Fever
-- Resigned
+"Session 5":  
+(20, D+5, 1, 1, 1, 1)  
+-- Booked by fever personnel 1 (To be Cancelled)  
+-- 2 Attendies  
+
+"Session 6":  
+(13, D+7, 2, 3, 10, 3)  
+-- exposure_end_date END LIMIT  
+-- Attended by 2 close_contact (Manager 1, Senior 7)  
+
+"Session 7"  
+(0, D+8, 1, 2, 2, 2)  
+-- exposure_end_date AFTER DAY 1  
+-- Hit capacity limit  
+-- Attended by 1 close_contact (Manager 1)  
 
 ### Health Declaration
 
 Non-Compliance:  
-D-2: 5, 10, 12, 15, 18, 19, 22, 24, 26, 38  
-D-DAY: 5, 9, 12, 15, 18, 19
+Junior 18 - 1 day (D-3)  
+Junior 19 - 3 days (D-3, D-1, D-day)  
 
 ### Participation List
 
-Current total number of Participants: 67  
+Current total number of Participants: 33  
 **Active personnels for fever/resign function testing**
 
-- Junior (eid: 1)
-- Senior (eid: 26)
-- Manager (eid: 37)
+Fever Testing
+Health Declaration Not Done D-DAY:  
+
+Manager 1  
+-- Attended Session: 1, 3
+-- Upcoming Session: 5
+-- Close contact <0, 6, 7, 14, 15>  
+-- Close contact Session: 4, 6
+-- Total participants removal: 5 (Session 4, 5, 6)
+-- Total "Sessions" removal : 2 (Session 4, 5)
+
+Junior 16  
+-- Upcoming Session: 7 (D+8)  
+-- Total "Sessions" removal: 0
+-- Total participants removal: 0
 
 ## Authors
 
