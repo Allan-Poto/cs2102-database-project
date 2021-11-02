@@ -59,9 +59,6 @@ Each Department:
 - Rooms per Floor: 2 (1-indexed)  
 - Rooms per Dpt: 2 (Same as Floor Number)  
 
-**Repeated room name (owl, eagle) on differnt floor**  
-**Dpt ID -> Floor belonging to that Dpt**  
-
 ### Updates
 
 Initial Capacity: 5  
