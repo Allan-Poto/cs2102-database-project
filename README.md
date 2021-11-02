@@ -71,6 +71,7 @@ Update Date: D-3 (Company Start Date)
 ### Sessions
 
 "Session 1":  
+("time", "date", room, "floor", bid, approver)
 (10, D-3, 1, 1, 1, 1);  
 (11, D-3, 1, 1, 1, 1);  
 (12, D-3, 1, 1, 1, 1);  
