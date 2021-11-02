@@ -147,6 +147,7 @@ CREATE OR REPLACE FUNCTION resign_from_meetings() RETURNS TRIGGER AS $$
 BEGIN
 	IF (NEW.resign IS NOT NULL) THEN DELETE FROM Participants WHERE eid = NEW.eid AND "date" >= (SELECT(CURRENT_DATE));
 	END IF;
+	RETURN NEW;
 END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER resign_meetings
@@ -337,17 +338,17 @@ CREATE OR REPLACE FUNCTION update_contact_tracing()
 RETURNS TRIGGER AS $$
 BEGIN
 	/*First cancel all future rooms booked by this Employee*/
-	DELETE FROM "Sessions" AS s WHERE s.bid = NEW.eid AND s."date" >= NEW."date";
+	DELETE FROM "Sessions" AS s WHERE s.bid = NEW.eid AND s."date" > NEW."date";
 	/*Remove employee from all future meetings that he is not the booker*/
-	DELETE FROM Participants AS p WHERE p.eid = NEW.eid AND p."date" >= NEW."date";
+	DELETE FROM Participants AS p WHERE p.eid = NEW.eid AND p."date" > NEW."date";
 	CREATE TEMP TABLE close_contacts ON COMMIT DROP AS
 		SELECT contact_tracing(NEW.eid, NEW."date")
 	;
 	/*Edit exposure end_date for close contacts*/
 	UPDATE Employees AS e SET exposure_end_date = (NEW."date" + interval '7 day') WHERE e.eid IN (SELECT contact_tracing FROM close_contacts);
 	/*Remove employees contacted from meeting for next 7 days*/
-	DELETE FROM "Sessions" AS s WHERE s.bid IN (SELECT contact_tracing FROM close_contacts) AND ("date" BETWEEN NEW."date" AND (NEW."date" + interval '7 day'));
-	DELETE FROM Participants AS p WHERE p.eid IN (SELECT contact_tracing FROM close_contacts) AND ("date" BETWEEN NEW."date" AND (NEW."date" + interval '7 day'));
+	DELETE FROM "Sessions" AS s WHERE s.bid IN (SELECT contact_tracing FROM close_contacts) AND ("date" BETWEEN (NEW."date" + interval '1 day') AND (NEW."date" + interval '7 day'));
+	DELETE FROM Participants AS p WHERE p.eid IN (SELECT contact_tracing FROM close_contacts) AND ("date" BETWEEN (NEW."date" + interval '1 day') AND (NEW."date" + interval '7 day'));
 	RETURN NEW;
 END; $$ LANGUAGE plpgsql;
 
@@ -363,7 +364,7 @@ DROP FUNCTION IF EXISTS
 /* DONE */
 CREATE OR REPLACE FUNCTION non_compliance
 	(IN "start_date" DATE, IN end_date DATE)
-RETURNS TABLE(eid INT, count BIGINT) AS $$
+RETURNS TABLE(eid INT, "count" BIGINT) AS $$
 #variable_conflict use_column
 DECLARE
 	"days" INT := end_date - "start_date" + 1;	
@@ -375,7 +376,7 @@ BEGIN
 	AND "date" <= end_date
 	GROUP BY eid 
 	HAVING COUNT(*) <> "days" /* exclude employees who have the 'correct' number of entries. */
-	ORDER BY count DESC ; /* order by decreasing number of days, as stipulated */
+	ORDER BY "count" DESC ; /* order by decreasing number of days, as stipulated */
 	
 END; 
 $$ LANGUAGE plpgsql;
@@ -409,7 +410,7 @@ RETURNS TABLE ("floor" INT, room INT, "date" DATE, start_hour INT) AS $$
 #variable_conflict use_column
 BEGIN
 RETURN QUERY
-SELECT floor,room, "date", "time"
+SELECT "floor",room, "date", "time"
 FROM participants p
 WHERE p.eid = eid1
 AND p.date >= "start_date"
@@ -420,14 +421,14 @@ $$ LANGUAGE plpgsql;
 /* DONE */
 CREATE OR REPLACE FUNCTION view_manager_report
 	(IN "start_date" DATE, eid1 INT)
-RETURNS TABLE(floor INT, room INT, "date" DATE, start_hour INT, eid INT) AS $$ 
+RETURNS TABLE("floor" INT, room INT, "date" DATE, start_hour INT, eid INT) AS $$ 
 #variable_conflict use_column
 /* no need for trigger : query will naturally return empty table if ied is not that of a manager's */
 DECLARE
 	m_did INT := (SELECT did FROM employees NATURAL JOIN manager WHERE eid = eid1); /* get manager's dept id */
 BEGIN
 RETURN QUERY /*WITH ManagerInfo AS (select * from employees natural join manager where eid = eid1)*/
-SELECT floor, room, "date", "time", bid
+SELECT "floor", room, "date", "time", bid
 FROM "Sessions" natural join meetingrooms
 WHERE did = m_did
 AND "date" >= "start_date"
