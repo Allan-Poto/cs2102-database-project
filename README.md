@@ -115,6 +115,7 @@ Update Date: D-3 (Company Start Date)
 Non-Compliance:  
 Junior 18 - 1 day (D-3)  
 Junior 19 - 3 days (D-3, D-1, D-day)  
+Manager 1 - 1 day (D-day)
 
 ### Participation List
 
@@ -125,16 +126,16 @@ Fever Testing
 Health Declaration Not Done D-DAY:  
 
 Manager 1  
--- Attended Session: 1, 3
--- Upcoming Session: 5
+-- Attended Session: 1, 3  
+-- Upcoming Session: 5  
 -- Close contact <0, 6, 7, 14, 15>  
--- Close contact Session: 4, 6
--- Total participants removal: 5 (Session 4, 5, 6)
+-- Close contact Session: 4, 6  
+-- Total participants removal: 5 (Session 4, 5, 6)  
 -- Total "Sessions" removal : 2 (Session 4, 5)
 
 Junior 16  
 -- Upcoming Session: 7 (D+8)  
--- Total "Sessions" removal: 0
+-- Total "Sessions" removal: 0  
 -- Total participants removal: 0
 
 ## Authors
