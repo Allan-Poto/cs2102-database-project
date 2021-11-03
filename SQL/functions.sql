@@ -95,9 +95,10 @@ BEGIN
 	IF did NOT IN (SELECT d.did FROM Departments d) THEN RAISE EXCEPTION 'Department does not exist';
 	ELSEIF (e_kind <> 'S') AND (e_kind <> 'J') AND (e_kind <> 'M') THEN RAISE EXCEPTION 'Invalid Employee kind';
 	ELSE
-	eid := (SELECT MAX(e.eid) FROM Employees e) + 1;
-	email := (SELECT CONCAT(ename, eid, '@ilovenus.com'));
-	INSERT INTO Employees VALUES (eid, ename, email, home, phone, office, NULL, did, NULL);
+		IF ((SELECT COUNT(*) FROM Employees) <> 0) THEN eid := (SELECT MAX(e.eid) FROM Employees e) + 1;
+		END IF;
+		email := (SELECT CONCAT(ename, eid, '@ilovenus.com'));
+		INSERT INTO Employees VALUES (eid, ename, email, home, phone, office, NULL, did, NULL);
 	END IF;
 
 	IF (e_kind = 'J') THEN INSERT INTO Junior VALUES(eid);
