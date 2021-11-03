@@ -337,7 +337,7 @@ BEGIN
 
 	IF (temperature BETWEEN 34 AND 43) THEN  
 		INSERT INTO HealthDeclaration(eid, "date", temp) VALUES(employee_id, declaration_date, temperature);
-	ELSE RAISE EXCEPTION 'Invalid Temperature ---> %', temperature USING HINT = "Please check your temperature";
+	ELSE RAISE EXCEPTION 'Invalid Temperature ---> %', temperature USING HINT = 'Temperature must be between 34 and 43 degrees';
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
