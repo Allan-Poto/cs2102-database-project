@@ -127,11 +127,11 @@ Manager 1
 -- Attended Session: 1, 3  
 -- Upcoming Session: 5  
 -- Close contact <0, 6, 7, 14, 15>  
--- Close contact Session: 4, 6  
+-- Close contact Session: 4, 6, 7  
 -- Total participants removal: 5 (Session 4, 5, 6)  
 -- Total "Sessions" removal : 2 (Session 4, 5)
 
-Junior 16  
+Junior 19  
 -- Upcoming Session: 7 (D+8)  
 -- Total "Sessions" removal: 0  
 -- Total participants removal: 0
