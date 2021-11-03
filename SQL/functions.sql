@@ -179,7 +179,7 @@ DECLARE
 	avail BOOLEAN := TRUE;
 	hour INT := start_hour;
 BEGIN
-	while hour < end_hour LOOP
+	WHILE hour < end_hour LOOP
 		IF ((SELECT EXISTS(SELECT * from "Sessions" WHERE "time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor) = TRUE)) THEN 
 			avail := FALSE;
 		END IF;
@@ -192,15 +192,15 @@ BEGIN
 				IF (eed < today) THEN
 					IF (avail = TRUE) THEN
 						INSERT INTO "Sessions"("time", "date", room, "floor", bid) VALUES (start_hour, bdate, mroom, rfloor, booker);
-					ELSE RAISE EXCEPTION "Meeting room not available!";
+					ELSE RAISE EXCEPTION 'Meeting room not available!';
 					END IF;
-				ELSE RAISE EXCEPTION "You are a close contact of a recent fever case. You cannot book a room today!";
+				ELSE RAISE EXCEPTION 'You are a close contact of a recent fever case. You cannot book a room today!';
 				END IF;
-			ELSE RAISE EXCEPTION "You are having a fever. You cannot book a room today!";
+			ELSE RAISE EXCEPTION 'You are having a fever. You cannot book a room today!';
 			END IF;
-		ELSE RAISE EXCEPTION "You are no longer an employee. You cannot book a room!";
+		ELSE RAISE EXCEPTION 'You are no longer an employee. You cannot book a room!';
 		END IF;
-	ELSE RAISE EXCEPTION "You are a junior employee. You cannot book a room!";
+	ELSE RAISE EXCEPTION 'You are a junior employee. You cannot book a room!';
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
@@ -210,9 +210,14 @@ NOT THE BOOKER CANNOT UNBOOK: SELECT unbook_room(4,3,'2021-11-03', 13, 00, 2);
 */
 CREATE OR REPLACE FUNCTION unbook_room(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN bookerid INT)
 RETURNS VOID AS $$
+DECLARE
+	hour INT := start_hour;
 BEGIN
-	-- ON DELETING SESSION, ALL PARTICIPANTS IN THE SESSION WILL BE REMOVED FROM THE PARTICIPANTS TABLE
-	DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = bookerid);
+	WHILE hour < end_hour LOOP
+		-- ON DELETING SESSION, ALL PARTICIPANTS IN THE SESSION WILL BE REMOVED FROM THE PARTICIPANTS TABLE
+		DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = bookerid);
+		hour := hour + 1;
+	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
 /* CHECK DONE
@@ -231,23 +236,27 @@ DECLARE
 					WHERE room = mroom AND "floor" = rfloor AND "date" <= today ORDER BY "date" DESC LIMIT 1);
 	resign_date DATE := (SELECT resign FROM Employees WHERE eid = employee);
 	eed DATE := (SELECT COALESCE(exposure_end_date,CURRENT_DATE-1) FROM Employees WHERE eid = employee);
+	hour INT := start_hour;
 BEGIN
-	IF (fever = FALSE) THEN
-		IF (approver = 0) THEN
-			IF (participants+1 <= capacity) THEN
-				IF (resign_date IS NULL) THEN
-					IF (eed < today)) THEN
-						INSERT INTO Participants VALUES (employee, start_hour, bdate, mroom, rfloor);
-					ELSE RAISE EXCEPTION "You are a close contact of a recent fever case. You cannot join the meeting!";
+	WHILE hour < end_hour LOOP
+		IF (fever = FALSE) THEN
+			IF (approver = 0) THEN
+				IF (participants+1 <= capacity) THEN
+					IF (resign_date IS NULL) THEN
+						IF (eed < today) THEN
+							INSERT INTO Participants VALUES (employee, start_hour, bdate, mroom, rfloor);
+						ELSE RAISE EXCEPTION 'You are a close contact of a recent fever case. You cannot join the meeting!';
+						END IF;
+					ELSE RAISE EXCEPTION 'You are no longer an employee. You cannot join the meeting!';
 					END IF;
-				ELSE RAISE EXCEPTION "You are no longer an employee. You cannot join the meeting!";
+				ELSE RAISE EXCEPTION 'The room has reached its maximum capacity. You cannot join the meeting!';
 				END IF;
-			ELSE RAISE EXCEPTION "The room has reached its maximum capacity. You cannot join the meeting!";
+			ELSE RAISE EXCEPTION 'This meeting has been approved. You cannot join the meeting!';
 			END IF;
-		ELSE RAISE EXCEPTION "This meeting has been approved. You cannot join the meeting!";
+		ELSE RAISE EXCEPTION 'You are having a fever. You cannot join the meeting!';
 		END IF;
-	ELSE RAISE EXCEPTION "You are having a fever. You cannot join the meeting!";
-	END IF;
+		hour := hour + 1;
+	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
 /* CHECK DONE
@@ -258,10 +267,14 @@ RETURNS VOID AS $$
 DECLARE
 	approver INT := (SELECT COALESCE(approver,0) FROM "Sessions" 
 					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
+	hour INT := start_hour;
 BEGIN
-	IF (approver = 0) THEN DELETE FROM Participants WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND eid = employee);
-	ELSE RAISE EXCEPTION "This meeting has been approved. You cannot leave the meeting!";
-	END IF;
+	WHILE hour < end_hour LOOP
+		IF (approver = 0) THEN DELETE FROM Participants WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND eid = employee);
+		ELSE RAISE EXCEPTION 'This meeting has been approved. You cannot leave the meeting!';
+		END IF;
+		hour := hour + 1;
+	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
 /* CHECK DONE
@@ -273,16 +286,19 @@ DECLARE
 	booker_dept INT := (SELECT did FROM Employees WHERE eid = booker);
 	manager_dept INT := (SELECT e.did FROM Employees e JOIN Manager m ON (e.eid = m.eid AND e.eid = mid));
 	resign_date DATE := (SELECT resign FROM Employees WHERE eid = mid);
+	hour INT := start_hour;
 BEGIN
-	IF (booker_dept = manager_dept) THEN 
-		IF (resign_date IS NULL) THEN
-			UPDATE "Sessions"
-			SET approver = mid
-			WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = booker);
-		ELSE RAISE EXCEPTION "You are no longer an employee. You cannot approve the meeting!";
+	WHILE hour < end_hour LOOP
+		IF (booker_dept = manager_dept) THEN 
+			IF (resign_date IS NULL) THEN
+				UPDATE "Sessions"
+				SET approver = mid
+				WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = booker);
+			ELSE RAISE EXCEPTION 'You are no longer an employee. You cannot approve the meeting!';
+			END IF;
+		ELSE RAISE EXCEPTION 'You and the booker are not from the same department!';
 		END IF;
-	ELSE RAISE EXCEPTION "You and the booker are not from the same department!";
-	END IF;
+	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
 
