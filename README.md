@@ -134,7 +134,7 @@ Manager 1
 Junior 19  
 -- Upcoming Session: 7 (D+8)  
 -- Total "Sessions" removal: 0  
--- Total participants removal: 0
+-- Total participants removal: 1
 
 ## Authors
 
