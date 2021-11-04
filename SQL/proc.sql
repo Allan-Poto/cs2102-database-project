@@ -181,6 +181,8 @@ DECLARE
 	avail BOOLEAN := TRUE;
 	hour INT := start_hour;
 BEGIN
+	IF (end_hour = 0) THEN end_hour := 24; 
+	END IF;
 	WHILE hour < end_hour LOOP
 		IF ((SELECT EXISTS(SELECT * from "Sessions" WHERE "time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor) = TRUE)) THEN 
 			avail := FALSE;
@@ -188,16 +190,23 @@ BEGIN
 		hour := hour + 1;
 	END LOOP;
 
+	hour := start_hour;
+
 	IF (SELECT booker IN (SELECT eid FROM Booker)) THEN
 		IF (resign_date IS NULL) THEN
 			IF (fever = FALSE) THEN
 				IF (eed < today) THEN
 					IF (avail = TRUE) THEN
-						INSERT INTO "Sessions"("time", "date", room, "floor", bid) VALUES (start_hour, bdate, mroom, rfloor, booker);
+						WHILE hour < end_hour LOOP
+							INSERT INTO "Sessions"("time", "date", room, "floor", bid) VALUES (hour, bdate, mroom, rfloor, booker);
+							INSERT INTO Participants(eid, "time", "date", room, "floor") VALUES (booker, hour, bdate, mroom, rfloor);
+							hour := hour + 1;
+						END LOOP;
 					ELSE RAISE EXCEPTION 'Meeting room not available!';
 					END IF;
 				ELSE RAISE EXCEPTION 'You are a close contact of a recent fever case. You cannot book a room today!';
 				END IF;
+			ELSEIF (fever IS NULL) THEN RAISE EXCEPTION 'You have not declared your temperature. You cannot book a room!';
 			ELSE RAISE EXCEPTION 'You are having a fever. You cannot book a room today!';
 			END IF;
 		ELSE RAISE EXCEPTION 'You are no longer an employee. You cannot book a room!';
@@ -211,10 +220,15 @@ CREATE OR REPLACE FUNCTION unbook_room(IN rfloor INT, IN mroom INT, IN bdate DAT
 RETURNS VOID AS $$
 DECLARE
 	hour INT := start_hour;
+	resign_date DATE := (SELECT resign FROM Employees WHERE eid = bookerid);
 BEGIN
+	IF (end_hour = 0) THEN end_hour := 24;
+	END IF;
+	IF (resign_date IS NOT NULL) THEN RAISE EXCEPTION 'You are no longer an employee!';
+	END IF;
 	WHILE hour < end_hour LOOP
 		-- ON DELETING SESSION, ALL PARTICIPANTS IN THE SESSION WILL BE REMOVED FROM THE PARTICIPANTS TABLE
-		DELETE FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = bookerid);
+		DELETE FROM "Sessions" WHERE ("time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = bookerid);
 		hour := hour + 1;
 	END LOOP;
 END; $$ LANGUAGE plpgsql;
@@ -236,13 +250,15 @@ DECLARE
 	eed DATE := (SELECT COALESCE(exposure_end_date,CURRENT_DATE-1) FROM Employees WHERE eid = employee);
 	hour INT := start_hour;
 BEGIN
+	IF (end_hour = 0) THEN end_hour := 24;
+	END IF;
 	WHILE hour < end_hour LOOP
 		IF (fever = FALSE) THEN
 			IF (approver = 0) THEN
 				IF (participants+1 <= capacity) THEN
 					IF (resign_date IS NULL) THEN
 						IF (eed < today) THEN
-							INSERT INTO Participants VALUES (employee, start_hour, bdate, mroom, rfloor);
+							INSERT INTO Participants VALUES (employee, hour, bdate, mroom, rfloor);
 						ELSE RAISE EXCEPTION 'You are a close contact of a recent fever case. You cannot join the meeting!';
 						END IF;
 					ELSE RAISE EXCEPTION 'You are no longer an employee. You cannot join the meeting!';
@@ -265,8 +281,10 @@ DECLARE
 					WHERE "time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor);
 	hour INT := start_hour;
 BEGIN
+	IF (end_hour = 0) THEN end_hour := 24;
+	END IF;
 	WHILE hour < end_hour LOOP
-		IF (approver = 0) THEN DELETE FROM Participants WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND eid = employee);
+		IF (approver = 0) THEN DELETE FROM Participants WHERE ("time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND eid = employee);
 		ELSE RAISE EXCEPTION 'This meeting has been approved. You cannot leave the meeting!';
 		END IF;
 		hour := hour + 1;
@@ -283,16 +301,49 @@ DECLARE
 	resign_date DATE := (SELECT resign FROM Employees WHERE eid = mid);
 	hour INT := start_hour;
 BEGIN
+	IF (end_hour = 0) THEN end_hour := 24;
+	END IF;
+	IF (manager_dept IS NULL) THEN RAISE EXCEPTION 'You are not a manager! You cannot approve the meeting!';
+	END IF;
 	WHILE hour < end_hour LOOP
 		IF (booker_dept = manager_dept) THEN 
 			IF (resign_date IS NULL) THEN
 				UPDATE "Sessions"
 				SET approver = mid
-				WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = booker);
+				WHERE ("time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = booker);
 			ELSE RAISE EXCEPTION 'You are no longer an employee. You cannot approve the meeting!';
 			END IF;
 		ELSE RAISE EXCEPTION 'You and the booker are not from the same department!';
 		END IF;
+		hour := hour + 1;
+	END LOOP;
+END; $$ LANGUAGE plpgsql;
+
+
+/* Giving the manager the responsibility to delete meetings that are pending so as to free up the slot */
+CREATE OR REPLACE FUNCTION reject_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN mid INT)
+RETURNS VOID AS $$
+DECLARE
+	booker INT := (SELECT bid FROM "Sessions" WHERE ("time" = start_hour AND "date" = bdate AND room = mroom AND "floor" = rfloor));
+	booker_dept INT := (SELECT did FROM Employees WHERE eid = booker);
+	manager_dept INT := (SELECT e.did FROM Employees e JOIN Manager m ON (e.eid = m.eid AND e.eid = mid));
+	resign_date DATE := (SELECT resign FROM Employees WHERE eid = mid);
+	hour INT := start_hour;
+BEGIN
+	IF (end_hour = 0) THEN end_hour := 24;
+	END IF;
+	IF (manager_dept IS NULL) THEN RAISE EXCEPTION 'You are not a manager! You cannot reject the meeting!';
+	END IF;
+	WHILE hour < end_hour LOOP
+		IF (booker_dept = manager_dept) THEN 
+			IF (resign_date IS NULL) THEN
+				DELETE FROM "Sessions"
+				WHERE ("time" = hour AND "date" = bdate AND room = mroom AND "floor" = rfloor AND bid = booker);
+			ELSE RAISE EXCEPTION 'You are no longer an employee. You cannot reject the meeting!';
+			END IF;
+		ELSE RAISE EXCEPTION 'You and the booker are not from the same department!';
+		END IF;
+		hour := hour + 1;
 	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
@@ -432,9 +483,9 @@ RETURNS TABLE ("floor" INT, room INT, "date" DATE, start_hour INT) AS $$
 BEGIN
 RETURN QUERY
 SELECT "floor",room, "date", "time"
-FROM participants p
+FROM participants p NATURAL JOIN "Sessions" s
 WHERE p.eid = eid1
-AND p.date >= "start_date"
+AND p.date >= "start_date" AND s.approver IS NOT NULL  
 ORDER BY "date", "time";
 END; 
 $$ LANGUAGE plpgsql;

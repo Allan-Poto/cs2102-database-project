@@ -3,6 +3,7 @@ CREATE DATABASE cs2102_project;
 
 \c cs2102_project
 
+
 DROP TABLE IF EXISTS	
 	Employees, Departments, Junior, Booker, Senior, Manager, MeetingRooms, Updates, "Sessions", Participants, HealthDeclaration CASCADE;
 
@@ -17,7 +18,7 @@ DROP TRIGGER IF EXISTS
 
 DROP FUNCTION IF EXISTS add_department, remove_department, add_room,
  change_capacity, add_employee, remove_employee, update_room_did, update_enfo, check_capacity_constraint, 
- resign_from_meetings, search_room, book_room, unbook_room, join_meeting, leave_meeting, approve_meeting,
+ resign_from_meetings, search_room, book_room, unbook_room, join_meeting, leave_meeting, approve_meeting, reject_meeting, 
  update_fever_status, declare_health, contact_tracing, update_contact_tracing,
  non_compliance, view_booking_report, view_future_meeting, view_manager_report CASCADE;
  
