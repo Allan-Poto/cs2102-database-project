@@ -18,7 +18,7 @@ CREATE OR REPLACE FUNCTION remove_department(IN id INT)
 RETURNS VOID AS 
 $$ BEGIN
 	/* Checking no employees under department*/
-	IF (id IN (SELECT DISTINCT did FROM Employees WHERE resign IS NOT NULL)) THEN RAISE EXCEPTION 'Employees with current department id still exist';
+	IF (id IN (SELECT DISTINCT did FROM Employees WHERE resign IS NOT NULL)) THEN RAISE EXCEPTION 'Emp		loyees with current department id still exist';
 
 	/*Changing all MeetingRooms to be under Department 0 (HR/Management - report)*/
 	ELSE UPDATE MeetingRooms SET did = 0 WHERE did = id;	
