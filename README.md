@@ -66,8 +66,8 @@ Update ID: Manager of their respective Dpts
 Update Date: D-3 (Company Start Date)  
 
 ### Sessions
-("time", "date", room, "floor", bid, approver)  
 
+("time", "date", room, "floor", bid, approver)  
 "Session 1":  
 (10, D-3, 1, 1, 1, 1);  
 (11, D-3, 1, 1, 1, 1);  

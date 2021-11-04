@@ -1,12 +1,6 @@
 \c cs2102_project
 
 -- BASIC
-DROP FUNCTION IF EXISTS add_department, remove_department, add_room,
- change_capacity, add_employee, remove_employee, update_room_did, update_enfo; 
-
-DROP TRIGGER IF EXISTS resign_meetings ON Employees;
-DROP TRIGGER IF EXISTS over_capacity ON Updates;
-
 CREATE OR REPLACE FUNCTION add_department(IN id INT, IN dpt_name TEXT)
 RETURNS VOID AS 
 $$ BEGIN
@@ -14,11 +8,12 @@ $$ BEGIN
 
 END; $$ LANGUAGE plpgsql;
 
+
 CREATE OR REPLACE FUNCTION remove_department(IN id INT)
 RETURNS VOID AS 
 $$ BEGIN
 	/* Checking no employees under department*/
-	IF (id IN (SELECT DISTINCT did FROM Employees WHERE resign IS NOT NULL)) THEN RAISE EXCEPTION 'Emp		loyees with current department id still exist';
+	IF (id IN (SELECT DISTINCT did FROM Employees WHERE resign IS NOT NULL)) THEN RAISE EXCEPTION 'Employees with current department id still exist';
 
 	/*Changing all MeetingRooms to be under Department 0 (HR/Management - report)*/
 	ELSE UPDATE MeetingRooms SET did = 0 WHERE did = id;	
@@ -28,11 +23,10 @@ $$ BEGIN
 END; $$ LANGUAGE plpgsql;
 
 
-
 CREATE OR REPLACE FUNCTION add_room(IN floor_num INT, IN room_num INT, IN room_name TEXT, IN capacity INT, IN dept_id INT, IN manager_id INT)
 RETURNS VOID AS 
 $$ BEGIN
-	IF ((SELECT did FROM Employees WHERE eid = manager_id) <> (SELECT did FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num))
+	IF ((SELECT did FROM Employees WHERE eid = manager_id) <> (dept_id))
 	THEN RAISE EXCEPTION 'Only a manager in the same department can add a room for that department';
 	ELSE
 	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id);
@@ -40,11 +34,13 @@ $$ BEGIN
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
+
 CREATE OR REPLACE FUNCTION update_room_did(IN room_num INT, IN floor_num INT, IN new_did INT) 
 RETURNS VOID AS $$
 BEGIN
 	UPDATE MeetingRooms set did = new_did WHERE room = room_num AND "floor" = floor_num;
 END; $$ LANGUAGE plpgsql;
+
 
 CREATE OR REPLACE FUNCTION change_capacity(IN floor_num INT, IN room_num INT, IN manager_id INT, IN new_capacity INT, IN curr_date DATE, 
 IN change_date DATE)
@@ -65,6 +61,7 @@ $$ BEGIN
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
+
 /*remove all sessions that have more participants higher than new capacity*/
 CREATE OR REPLACE FUNCTION check_capacity_constraint() RETURNS TRIGGER AS $$
 BEGIN
@@ -84,9 +81,11 @@ BEGIN
 	RETURN NULL;
 END; $$ LANGUAGE plpgsql;
 
+
 CREATE TRIGGER over_capacity
 AFTER INSERT ON Updates
 FOR EACH ROW EXECUTE FUNCTION check_capacity_constraint();
+
 
 CREATE OR REPLACE FUNCTION add_employee(IN ename TEXT, IN home INT, IN phone INT, IN office INT, IN did INT, IN e_kind TEXT /*J or S or M*/)
 RETURNS VOID AS $$
@@ -104,13 +103,14 @@ BEGIN
 	END IF;
 
 	IF (e_kind = 'J') THEN INSERT INTO Junior VALUES(eid);
-	ELSE INSERT INTO Booker VALUES(eid);
+	ELSE 	INSERT INTO Booker VALUES(eid);
+		IF (e_kind = 'S') THEN INSERT INTO Senior VALUES(eid);
+		ELSE INSERT INTO Manager VALUES(eid);	
+		END IF;
 	END IF;
 
-	IF (e_kind = 'S') THEN INSERT INTO Senior VALUES(eid);
-	ELSE INSERT INTO Manager VALUES(eid);	
-	END IF;
 END; $$ LANGUAGE plpgsql;
+
 
 /*Update employee info */
 CREATE OR REPLACE FUNCTION update_enfo(IN change_type TEXT, IN new_value INT, IN eid_to_change INT) /*change type - home(H), phone(P), office(O), did(D)*/
@@ -124,6 +124,7 @@ BEGIN
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
+
 CREATE OR REPLACE FUNCTION remove_employee(IN del_eid INT)
 RETURNS VOID AS 
 $$ BEGIN
@@ -132,26 +133,26 @@ $$ BEGIN
 	WHERE eid = del_eid;	
 END; $$ LANGUAGE plpgsql;
 
+
 /*RESIGN -> 
 	they are no longer allowed to book or approve any meetings rooms. Additionally, any future records (e.g., future
 meetings) are removed. create tigger to auto do this after employee remove*/
 CREATE OR REPLACE FUNCTION resign_from_meetings() RETURNS TRIGGER AS $$
 BEGIN
-	IF (NEW.resign IS NOT NULL) THEN DELETE FROM Participants WHERE eid = NEW.eid AND "date" >= (SELECT(CURRENT_DATE));
+	IF (NEW.resign IS NOT NULL) THEN 
+	DELETE FROM "Sessions" WHERE bid = NEW.eid AND "date" >= (SELECT(CURRENT_DATE));
+	DELETE FROM Participants WHERE eid = NEW.eid AND "date" >= (SELECT(CURRENT_DATE));
 	END IF;
 	RETURN NEW;
 END; $$ LANGUAGE plpgsql;
+
 
 CREATE TRIGGER resign_meetings
 AFTER UPDATE ON Employees
 FOR EACH ROW EXECUTE FUNCTION resign_from_meetings();
 
--- CORE
-DROP FUNCTION IF EXISTS 
-	search_room, book_room, unbook_room, join_meeting, leave_meeting, approve_meeting CASCADE;
 
-/* CHECK DONE
-SELECT * FROM search_room(3,'2021-11-05',15,18); */
+-- CORE
 CREATE OR REPLACE FUNCTION search_room(IN cap INT, IN bdate DATE, IN start_hour INT, IN end_hour INT)
 RETURNS TABLE (rfloor INT, mroom INT, dept INT, capa INT) AS $$
 BEGIN
@@ -169,8 +170,7 @@ BEGIN
 	ORDER BY capacity;	
 END; $$ LANGUAGE plpgsql;
 
-/* CHECK DONE
-SELECT book_room(3,3,'2021-11-11',13, 14,36); */
+
 CREATE OR REPLACE FUNCTION book_room(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN booker INT)
 RETURNS VOID AS $$
 DECLARE
@@ -206,10 +206,7 @@ BEGIN
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
-/* CHECK DONE
-BOOKER CAN UNBOOK: SELECT unbook_room(3,3,'2021-11-02', 23, 00, 37);
-NOT THE BOOKER CANNOT UNBOOK: SELECT unbook_room(4,3,'2021-11-03', 13, 00, 2);
-*/
+
 CREATE OR REPLACE FUNCTION unbook_room(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN bookerid INT)
 RETURNS VOID AS $$
 DECLARE
@@ -222,8 +219,7 @@ BEGIN
 	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
-/* CHECK DONE
-SELECT join_meeting(4,3,'2021-11-03', 13, 15, 2); */
+
 CREATE OR REPLACE FUNCTION join_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN employee INT)
 RETURNS VOID AS $$
 DECLARE
@@ -261,9 +257,7 @@ BEGIN
 	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
-/* CHECK DONE
-NOT APPROVED CAN LEAVE: SELECT leave_meeting(4,3,'2021-11-03', 13, 15, 1); 
-APPROVED CANNOT LEAVE: SELECT leave_meeting(3,3,'2021-11-02', 23, 00, 37); */
+
 CREATE OR REPLACE FUNCTION leave_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN employee INT)
 RETURNS VOID AS $$
 DECLARE
@@ -279,8 +273,7 @@ BEGIN
 	END LOOP;
 END; $$ LANGUAGE plpgsql;
 
-/* CHECK DONE
-SELECT approve_meeting(4,3,'2021-11-03',13,14,39); */
+
 CREATE OR REPLACE FUNCTION approve_meeting(IN rfloor INT, IN mroom INT, IN bdate DATE, IN start_hour INT, IN end_hour INT, IN mid INT)
 RETURNS VOID AS $$
 DECLARE
@@ -305,14 +298,6 @@ END; $$ LANGUAGE plpgsql;
 
 
 -- HEALTH
-DROP TRIGGER IF EXISTS 
-	fever_update ON HealthDeclaration CASCADE;
-DROP TRIGGER IF EXISTS	
-	fever_check ON HealthDeclaration CASCADE;
-
-DROP FUNCTION IF EXISTS 
-	update_fever_status, declare_health, contact_tracing, update_contact_tracing CASCADE;
-
 CREATE OR REPLACE FUNCTION update_fever_status()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -372,7 +357,7 @@ $$ BEGIN
 END; 
 $$ LANGUAGE plpgsql;
 
-/*Update status of those with close contact in the event of fever, including canceling meeting etc*/ 
+
 CREATE OR REPLACE FUNCTION update_contact_tracing()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -391,6 +376,7 @@ BEGIN
 	RETURN NEW;
 END; $$ LANGUAGE plpgsql;
 
+
 CREATE TRIGGER fever_check
 AFTER INSERT ON HealthDeclaration
 FOR EACH ROW WHEN (NEW.fever = true)
@@ -398,9 +384,6 @@ EXECUTE FUNCTION update_contact_tracing();
 
 
 -- ADMIN
-DROP FUNCTION IF EXISTS 
-	non_compliance, view_booking_report, view_future_meeting, view_manager_report CASCADE;
-/* DONE */
 CREATE OR REPLACE FUNCTION non_compliance
 	(IN "start_date" DATE, IN end_date DATE)
 RETURNS TABLE(eid INT, "count" BIGINT) AS $$
@@ -421,7 +404,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-/* DONE */
 /* This function doesn't change approval status to boolean. Hence approved status is determined by whether the 'approved' column is NULL (not approved) or an integer (approved) */
 CREATE OR REPLACE FUNCTION view_booking_report
 	(IN "start_date" DATE, IN eid INT) 
@@ -440,7 +422,7 @@ RETURN QUERY WITH SessionsRaw AS (
 END; 
 $$ LANGUAGE plpgsql;
 
-/* DONE */
+
 /* participants table contains all approved meetings already, hence no need to check if approved anot */
 /* note input eid is defined as eid1. This is to avoid p.eid = eid in the query, which will reference p.eid itself i.e simply returns meetings from start_date on and ignoring input eid */
 CREATE OR REPLACE FUNCTION view_future_meeting
@@ -457,7 +439,7 @@ ORDER BY "date", "time";
 END; 
 $$ LANGUAGE plpgsql;
 
-/* DONE */
+
 CREATE OR REPLACE FUNCTION view_manager_report
 	(IN "start_date" DATE, eid1 INT)
 RETURNS TABLE("floor" INT, room INT, "date" DATE, start_hour INT, eid INT) AS $$ 
