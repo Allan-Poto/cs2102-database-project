@@ -32,7 +32,7 @@ END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION add_room(IN floor_num INT, IN room_num INT, IN room_name TEXT, IN capacity INT, IN dept_id INT, IN manager_id INT)
 RETURNS VOID AS 
 $$ BEGIN
-	IF ((SELECT did FROM Employees WHERE eid = manager_id) != (SELECT did FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num))
+	IF ((SELECT did FROM Employees WHERE eid = manager_id) <> (SELECT did FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num))
 	THEN RAISE EXCEPTION 'Only a manager in the same department can add a room for that department';
 	ELSE
 	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id);
@@ -55,7 +55,7 @@ $$ BEGIN
 	/*Must be a MANAGER*/
 	ELSEIF manager_id NOT IN (SELECT eid FROM Manager) THEN RAISE EXCEPTION 'Employee is not a Manager';
 	/*only manager in same department can change capacity*/
-	ELSEIF ((SELECT did FROM Employees WHERE eid = manager_id) != (SELECT did FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num))
+	ELSEIF ((SELECT did FROM Employees WHERE eid = manager_id) <> (SELECT did FROM MeetingRooms WHERE room = room_num AND "floor" = floor_num))
 	THEN RAISE EXCEPTION 'Only a manager in same department as this room can change its capacity';
 	
 	ELSE 
