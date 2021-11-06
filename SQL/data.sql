@@ -194,7 +194,7 @@ insert into Participants (eid, "time", "date", room, "floor") values (0, 21, CUR
 insert into Participants (eid, "time", "date", room, "floor") values (6, 16, CURRENT_DATE + interval '1 day', 2, 1);
 /* "Session 5" */
 insert into Participants (eid, "time", "date", room, "floor") values (1, 20, CURRENT_DATE + interval '5 day', 1, 1);
-insert into Participants (eid, "time", "date", room, "floor") values (7, 20, CURRENT_DATE + interval '5 day', 1, 1);
+insert into Participants (eid, "time", "date", room, "floor") values (8, 20, CURRENT_DATE + interval '5 day', 1, 1);
 /* "Session 6" */
 insert into Participants (eid, "time", "date", room, "floor") values (10, 13, CURRENT_DATE + interval '7 day', 2, 3);
 insert into Participants (eid, "time", "date", room, "floor") values (0, 13, CURRENT_DATE + interval '7 day', 2, 3);
