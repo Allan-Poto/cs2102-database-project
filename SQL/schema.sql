@@ -24,7 +24,7 @@ DROP FUNCTION IF EXISTS add_department, remove_department, add_room,
  
 
 CREATE TABLE Departments (
-	did INT,
+	did INT CHECK (did >= 0),
 	dname TEXT,
 	PRIMARY KEY (did)
 );
@@ -69,19 +69,19 @@ CREATE TABLE Manager (
 
 
 CREATE TABLE MeetingRooms(
-	room INT CHECK (room >= 0),
+	room INT CHECK (room > 0), 
 	"floor" INT, 
-	rname TEXT,
-	did INT NOT NULL,
-	PRIMARY KEY(room, "floor"),
+	rname TEXT, 
+	did INT NOT NULL, 
+	PRIMARY KEY(room, "floor"), 
 	FOREIGN KEY (did) REFERENCES Departments (did)
 );
 
 CREATE TABLE Updates ( /* Store all updates */
 	"date" DATE,
-	room INT CHECK (room >= 0),
+	room INT CHECK (room > 0),
 	"floor" INT,
-	capacity INT CHECK (capacity >= 0), /* The capacity as of the stated date */
+	capacity INT CHECK (capacity > 0), /* The capacity as of the stated date */
 	eid INT, /* The manager who made the update */
 	PRIMARY KEY("date", "floor", room),
 	FOREIGN KEY ("floor", room) REFERENCES MeetingRooms("floor", room),
@@ -91,7 +91,7 @@ CREATE TABLE Updates ( /* Store all updates */
 CREATE TABLE "Sessions" (
 	"time" INT CHECK ("time" BETWEEN 0 AND 24), /* 24HR Format (I.E 0600,1400) */
 	"date" DATE,
-	room INT CHECK (room >= 0),
+	room INT CHECK (room > 0),
 	"floor" INT, 
 	bid INT NOT NULL, /* Person who booked the session */
 	approver INT DEFAULT NULL, /* The manager who approved the session */
@@ -105,7 +105,7 @@ CREATE TABLE Participants ( /* Each entry is a participant for a certain session
 	eid INT,
 	"time" INT CHECK ("time" BETWEEN 0 AND 24),
 	"date" DATE,
-	room INT CHECK (room >= 0),
+	room INT CHECK (room > 0),
 	"floor" INT,
 	PRIMARY KEY(eid, "time", "date", room, "floor"),
 	FOREIGN KEY ("time", "date", room, "floor") REFERENCES "Sessions" ("time", "date", room, "floor") ON DELETE CASCADE
