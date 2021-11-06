@@ -30,11 +30,11 @@ $$ BEGIN
 	THEN RAISE EXCEPTION 'Only a manager in the same department can add a room for that department';
 	ELSE
 	INSERT INTO MeetingRooms VALUES (room_num, floor_num, room_name, dept_id);
-	INSERT INTO Updates VALUES ((SELECT CURRENT_DATE), room_num, floor_num, capacity, manager_id);
+	INSERT INTO Updates VALUES ((CURRENT_DATE), room_num, floor_num, capacity, manager_id);
 	END IF;
 END; $$ LANGUAGE plpgsql;
 
-
+/*For reallocation of rooms in the event departments are removed and returned to HR*/
 CREATE OR REPLACE FUNCTION update_room_did(IN room_num INT, IN floor_num INT, IN new_did INT) 
 RETURNS VOID AS $$
 BEGIN
@@ -70,9 +70,9 @@ BEGIN
 	AND "floor" = NEW."floor" 
 	AND "date" >= NEW."date"
 	AND "time" IN(  SELECT ref."time"
-				    FROM (SELECT COUNT(eid) AS total_participants, "time", "date", room, "floor"
-		                 FROM Participants
-						 GROUP BY "time", "date", room, "floor") AS ref 
+			FROM (SELECT COUNT(eid) AS total_participants, "time", "date", room, "floor"
+		                    	FROM Participants
+					GROUP BY "time", "date", room, "floor") AS ref 
 					WHERE ref."date" >= NEW."date"
 					AND ref.room = NEW.room
 					AND ref."floor" = NEW."floor"
@@ -98,12 +98,12 @@ BEGIN
 	ELSE
 		IF ((SELECT COUNT(*) FROM Employees) <> 0) THEN eid := (SELECT MAX(e.eid) FROM Employees e) + 1;
 		END IF;
-		email := (SELECT CONCAT(ename, eid, '@ilovenus.com'));
+		email := (SELECT CONCAT(ename, eid, '@ilovenus.com')); -- Auto generated email 
 		INSERT INTO Employees VALUES (eid, ename, email, home, phone, office, NULL, did, NULL);
 	END IF;
 
 	IF (e_kind = 'J') THEN INSERT INTO Junior VALUES(eid);
-	ELSE 	INSERT INTO Booker VALUES(eid);
+	ELSE 	INSERT INTO Booker VALUES(eid); -- Not Junior means can book
 		IF (e_kind = 'S') THEN INSERT INTO Senior VALUES(eid);
 		ELSE INSERT INTO Manager VALUES(eid);	
 		END IF;
