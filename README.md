@@ -12,7 +12,7 @@ Add the relevant data to the tables
 > `psql -U postgres -f data.sql`  
 
 Add the function to the database
-> `psql -U postgres -f functions.sql`
+> `psql -U postgres -f proc.sql`
 
 3. Connect to database `psql -U postgres -d cs2102_project` and execute queries directly there.
 
