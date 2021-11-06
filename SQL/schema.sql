@@ -81,7 +81,7 @@ CREATE TABLE Updates ( /* Store all updates */
 	"date" DATE,
 	room INT,
 	"floor" INT,
-	capacity INT, /* The capacity as of the stated date */
+	capacity INT CHECK (capacity >= 0), /* The capacity as of the stated date */
 	eid INT, /* The manager who made the update */
 	PRIMARY KEY("date", "floor", room),
 	FOREIGN KEY ("floor", room) REFERENCES MeetingRooms("floor", room),
@@ -89,7 +89,7 @@ CREATE TABLE Updates ( /* Store all updates */
 );
 
 CREATE TABLE "Sessions" (
-	"time" INT, /* 24HR Format (I.E 0600,1400) */
+	"time" INT CHECK ("time" BETWEEN 0 AND 24), /* 24HR Format (I.E 0600,1400) */
 	"date" DATE,
 	room INT,
 	"floor" INT, 
@@ -103,7 +103,7 @@ CREATE TABLE "Sessions" (
 
 CREATE TABLE Participants ( /* Each entry is a participant for a certain session */
 	eid INT,
-	"time" INT,
+	"time" INT CHECK ("time" BETWEEN 0 AND 24),
 	"date" DATE,
 	room INT,
 	"floor" INT,
@@ -114,7 +114,7 @@ CREATE TABLE Participants ( /* Each entry is a participant for a certain session
 CREATE TABLE HealthDeclaration (
 	eid INT,
 	"date" DATE,
-	temp FLOAT,
+	temp FLOAT CHECK (temp BETWEEN 34 AND 43),
 	fever BOOLEAN, /* FEVER > 37.5 in declareHealth function */
 	PRIMARY KEY(eid, "date"),
 	FOREIGN KEY(eid) REFERENCES Employees(eid)
