@@ -30,12 +30,12 @@ CREATE TABLE Departments (
 );
 
 CREATE TABLE Employees (
-	eid INT,
+	eid INT CHECK (eid >= 0),
 	ename TEXT,
-	email TEXT UNIQUE,
-	home INT,
-	phone INT,
-	office INT,
+	email TEXT UNIQUE, 
+	home INT CHECK (home > 9999999), -- home number (8 digits or more)
+	phone INT CHECK (phone > 9999999), -- phone number (8 digits or more)
+	office INT CHECK (phone > 9999999), -- office number (8 digits or more)
 	resign DATE DEFAULT NULL,
 	did INT NOT NULL,
 	exposure_end_date DATE DEFAULT NULL,
@@ -89,7 +89,7 @@ CREATE TABLE Updates ( /* Store all updates */
 );
 
 CREATE TABLE "Sessions" (
-	"time" INT CHECK ("time" BETWEEN 0 AND 24), /* 24HR Format (I.E 0600,1400) */
+	"time" INT CHECK ("time" BETWEEN 0 AND 23), /* 24HR Format (I.E 0600,1400) */
 	"date" DATE,
 	room INT CHECK (room > 0),
 	"floor" INT, 
@@ -103,7 +103,7 @@ CREATE TABLE "Sessions" (
 
 CREATE TABLE Participants ( /* Each entry is a participant for a certain session */
 	eid INT,
-	"time" INT CHECK ("time" BETWEEN 0 AND 24),
+	"time" INT CHECK ("time" BETWEEN 0 AND 23),
 	"date" DATE,
 	room INT CHECK (room > 0),
 	"floor" INT,
